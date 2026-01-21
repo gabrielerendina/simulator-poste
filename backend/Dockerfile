@@ -11,6 +11,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia il codice sorgente
 COPY . .
 
+# Crea un user non-root per security
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
 # Espone la porta del backend
 EXPOSE 8000
 

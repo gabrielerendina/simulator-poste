@@ -1,10 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 import uvicorn
 import numpy as np
 import io
+import os
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -18,7 +20,6 @@ from reportlab.platypus import (
 )
 import matplotlib.pyplot as plt
 import matplotlib
-from fastapi.middleware.cors import CORSMiddleware
 
 from . import crud, models, schemas
 from .database import SessionLocal, engine
@@ -29,17 +30,35 @@ matplotlib.use("Agg")
 
 app = FastAPI(title="Poste Tender Simulator API")
 
+# Configure CORS with specific origins
+ALLOWED_ORIGINS = os.environ.get(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:5173,http://localhost:80,http://localhost"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:80",
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+    max_age=600,  # Cache preflight for 10 minutes
 )
+
+# Middleware for payload size validation (max 10 MB)
+MAX_PAYLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+
+@app.middleware("http")
+async def limit_upload_size(request: Request, call_next):
+    if request.method in ["POST", "PUT", "PATCH"]:
+        if "content-length" in request.headers:
+            content_length = int(request.headers["content-length"])
+            if content_length > MAX_PAYLOAD_SIZE:
+                return HTTPException(
+                    status_code=413,
+                    detail=f"Request payload too large. Maximum size is {MAX_PAYLOAD_SIZE / 1024 / 1024:.0f}MB"
+                )
+    return await call_next(request)
 
 # --- DB Dependency ---
 def get_db():
@@ -61,26 +80,75 @@ def on_startup():
 def calculate_economic_score(
     p_base, p_offered, p_best_competitor, alpha=0.3, max_econ=40.0
 ):
+    """
+    Calculate economic score based on offered price vs base and competitor.
+    
+    Uses interpolation formula with alpha exponent for progressive discounting reward.
+    
+    Args:
+        p_base: Base price
+        p_offered: Our offered price
+        p_best_competitor: Best competitor's price
+        alpha: Exponent factor (0-1)
+        max_econ: Maximum economic score
+    
+    Returns:
+        Economic score (0 to max_econ)
+    """
+    # Price must be less than or equal to base
     if p_offered > p_base:
         return 0.0
+    
+    # Get the best price between us and competitor
     actual_best = min(p_offered, p_best_competitor)
+    
+    # Calculate denominator (spread from base to best price)
     denom = p_base - actual_best
     if denom <= 0:
-        return 0.0
+        # Edge case: if actual_best >= p_base, return max score if we're within range
+        if actual_best == p_base:
+            return 0.0
+        return max_econ
+    
+    # Calculate numerator (our discount)
     num = p_base - p_offered
+    
+    # Calculate ratio (0 to 1)
     ratio = num / denom
-    if ratio > 1:
-        ratio = 1.0
-    if ratio < 0:
-        ratio = 0.0
-    return max_econ * (ratio**alpha)
+    
+    # Clamp ratio to [0, 1]
+    ratio = max(0.0, min(1.0, ratio))
+    
+    # Apply alpha exponent and scale to max
+    return max_econ * (ratio ** alpha)
 
 def calculate_prof_score(R, C, max_res, max_points, max_certs=5):
+    """
+    Calculate professional score for a requirement.
+    
+    Args:
+        R: Number of resources
+        C: Number of certifications
+        max_res: Maximum expected resources
+        max_points: Maximum points achievable
+        max_certs: Maximum certifications to count
+    
+    Returns:
+        Score capped at max_points
+    """
+    # Limit R and C to their maximums
     R = min(R, max_res)
     C = min(C, max_certs)
+    
+    # Ensure C doesn't exceed R
     if R < C:
         C = R
+    
+    # Calculate score: base points for resources + bonus for certifications
+    # Each resource = 2 points base, each certification adds R points
     score = (2 * R) + (R * C)
+    
+    # Cap at maximum points allowed
     return min(score, max_points)
 
 
