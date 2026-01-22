@@ -2,7 +2,7 @@
 Pydantic schemas for request/response validation
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Dict, Any, Optional
 
 
@@ -34,8 +34,7 @@ class Requirement(BaseModel):
     sub_reqs: Optional[List[Dict[str, Any]]] = None
     criteria: Optional[List[Dict[str, Any]]] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LotConfig(BaseModel):
@@ -51,8 +50,7 @@ class LotConfig(BaseModel):
     reqs: List[Dict[str, Any]] = Field(default_factory=list)
     state: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SimulationState(BaseModel):
@@ -75,9 +73,9 @@ class TechInput(BaseModel):
 class CalculateRequest(BaseModel):
     """Request to calculate scores"""
     lot_key: str
-    base_amount: float
-    competitor_discount: float
-    my_discount: float
+    base_amount: float = Field(gt=0, description="Base amount must be greater than 0")
+    competitor_discount: float = Field(ge=0, le=100, description="Discount must be between 0 and 100")
+    my_discount: float = Field(ge=0, le=100, description="Discount must be between 0 and 100")
     tech_inputs: List[TechInput]
     selected_company_certs: List[str] = Field(default_factory=list)
 
@@ -85,21 +83,21 @@ class CalculateRequest(BaseModel):
 class SimulationRequest(BaseModel):
     """Request to run simulation"""
     lot_key: str
-    base_amount: float
-    competitor_discount: float
-    my_discount: float
-    current_tech_score: float
+    base_amount: float = Field(gt=0, description="Base amount must be greater than 0")
+    competitor_discount: float = Field(ge=0, le=100, description="Discount must be between 0 and 100")
+    my_discount: float = Field(ge=0, le=100, description="Discount must be between 0 and 100")
+    current_tech_score: float = Field(ge=0, description="Technical score must be non-negative")
 
 
 class MonteCarloRequest(BaseModel):
     """Request to run Monte Carlo simulation"""
     lot_key: str
-    base_amount: float
-    my_discount: float
-    competitor_discount_mean: float
-    competitor_discount_std: float = 3.5
-    current_tech_score: float
-    iterations: int = 500
+    base_amount: float = Field(gt=0, description="Base amount must be greater than 0")
+    my_discount: float = Field(ge=0, le=100, description="Discount must be between 0 and 100")
+    competitor_discount_mean: float = Field(ge=0, le=100, description="Discount must be between 0 and 100")
+    competitor_discount_std: float = Field(ge=0, default=3.5, description="Standard deviation must be non-negative")
+    current_tech_score: float = Field(ge=0, description="Technical score must be non-negative")
+    iterations: int = Field(ge=1, le=10000, default=500, description="Iterations must be between 1 and 10000")
 
 
 class ExportPDFRequest(BaseModel):
@@ -122,5 +120,4 @@ class MasterData(BaseModel):
     requirement_labels: List[str] = Field(default_factory=list)
     economic_formulas: Optional[List[Dict[str, Any]]] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

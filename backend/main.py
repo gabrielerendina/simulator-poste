@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
 from typing import List, Dict, Any
 from datetime import datetime
+from contextlib import asynccontextmanager
 import uvicorn
 import numpy as np
 import io
@@ -38,7 +39,34 @@ models.Base.metadata.create_all(bind=engine)
 
 matplotlib.use("Agg")
 
-app = FastAPI(title="Poste Tender Simulator API")
+
+# Lifespan event handler (replaces deprecated on_event)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handle application startup and shutdown"""
+    # Startup
+    logger.info("Application starting up", extra={"event": "startup"})
+    db = SessionLocal()
+    try:
+        crud.seed_initial_data(db)
+        logger.info("Database seeded successfully")
+    except Exception as e:
+        logger.error("Failed to seed database", exc_info=True)
+        raise
+    finally:
+        db.close()
+    logger.info("Application startup complete")
+
+    yield
+
+    # Shutdown (if needed in future)
+    logger.info("Application shutting down")
+
+
+app = FastAPI(
+    title="Poste Tender Simulator API",
+    lifespan=lifespan
+)
 
 
 # --- CORS Configuration (Environment-based) ---
@@ -311,19 +339,6 @@ def metrics_endpoint():
         raise HTTPException(status_code=500, detail="Failed to retrieve metrics")
 
 
-@app.on_event("startup")
-def on_startup():
-    logger.info("Application starting up", extra={"event": "startup"})
-    db = SessionLocal()
-    try:
-        crud.seed_initial_data(db)
-        logger.info("Database seeded successfully")
-    except Exception as e:
-        logger.error("Failed to seed database", exc_info=True)
-        raise
-    finally:
-        db.close()
-    logger.info("Application startup complete")
 
 
 # --- LOGIC (Copied from original, can be refactored) ---
@@ -411,7 +426,7 @@ def calculate_prof_score(R, C, max_res, max_points, max_certs=5):
 @app.get("/config", response_model=Dict[str, schemas.LotConfig])
 def get_config(db: Session = Depends(get_db)):
     configs = crud.get_lot_configs(db)
-    return {c.name: schemas.LotConfig.from_orm(c) for c in configs}
+    return {c.name: schemas.LotConfig.model_validate(c) for c in configs}
 
 
 @app.get("/master-data", response_model=schemas.MasterData)
@@ -448,7 +463,7 @@ def update_config(
         crud.update_lot_config(db, lot_name, lot_data)
 
     configs = crud.get_lot_configs(db)
-    return {c.name: schemas.LotConfig.from_orm(c) for c in configs}
+    return {c.name: schemas.LotConfig.model_validate(c) for c in configs}
 
 
 @app.post("/config/add", response_model=schemas.LotConfig)
@@ -466,7 +481,7 @@ def add_lot(lot_key: str, db: Session = Depends(get_db)):
         reqs=[],
     )
     db_lot = crud.create_lot_config(db, new_lot)
-    return schemas.LotConfig.from_orm(db_lot)
+    return schemas.LotConfig.model_validate(db_lot)
 
 
 @app.delete("/config/{lot_key}")
@@ -538,7 +553,7 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
         logger.warning(f"Lot not found: {data.lot_key}")
         raise HTTPException(status_code=404, detail="Lot not found")
 
-    lot_cfg = schemas.LotConfig.from_orm(lot_cfg_db)
+    lot_cfg = schemas.LotConfig.model_validate(lot_cfg_db)
 
     p_best = data.base_amount * (1 - (data.competitor_discount / 100))
     p_off = data.base_amount * (1 - (data.my_discount / 100))
@@ -630,7 +645,7 @@ def simulate(data: schemas.SimulationRequest, db: Session = Depends(get_db)):
     lot_cfg_db = crud.get_lot_config(db, data.lot_key)
     if not lot_cfg_db:
         raise HTTPException(status_code=404, detail="Lot not found")
-    lot_cfg = schemas.LotConfig.from_orm(lot_cfg_db)
+    lot_cfg = schemas.LotConfig.model_validate(lot_cfg_db)
 
     p_base = data.base_amount
     p_best_comp = p_base * (1 - (data.competitor_discount / 100))
@@ -658,7 +673,7 @@ def monte_carlo_simulation(
     lot_cfg_db = crud.get_lot_config(db, data.lot_key)
     if not lot_cfg_db:
         raise HTTPException(status_code=404, detail="Lot not found")
-    lot_cfg = schemas.LotConfig.from_orm(lot_cfg_db)
+    lot_cfg = schemas.LotConfig.model_validate(lot_cfg_db)
 
     comp_discounts = np.random.normal(
         data.competitor_discount_mean, data.competitor_discount_std, data.iterations
@@ -715,7 +730,7 @@ def export_pdf(data: schemas.ExportPDFRequest, db: Session = Depends(get_db)):
     lot_cfg_db = crud.get_lot_config(db, data.lot_key)
     if not lot_cfg_db:
         raise HTTPException(status_code=404, detail="Lot not found")
-    lot_cfg = schemas.LotConfig.from_orm(lot_cfg_db)
+    lot_cfg = schemas.LotConfig.model_validate(lot_cfg_db)
 
     # Run REAL Monte Carlo simulation (500 iterations)
     iterations = 500
