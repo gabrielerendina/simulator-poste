@@ -145,7 +145,7 @@ export default function TechEvaluator({ lotData, inputs, setInputs, certs, setCe
                                         <div>
                                             <div className="flex justify-between mb-1">
                                                 <span className="text-xs font-semibold text-slate-600">{t('common.certificates')} (C)</span>
-                                                <span className="text-xs font-bold">{cur.c_val} / {cur.prof_C}</span>
+                                                <span className="text-xs font-bold">{cur.c_val} / {maxC}</span>
                                             </div>
                                             <input
                                                 type="range"

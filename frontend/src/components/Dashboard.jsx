@@ -51,6 +51,12 @@ export default function Dashboard({ results, simulationData, myDiscount, competi
     const [mcLoading, setMcLoading] = useState(false);
     const [exportLoading, setExportLoading] = useState(false);
 
+    // Competitor inputs for discount optimizer
+    const [competitorTechScore, setCompetitorTechScore] = useState(lotData?.max_tech_score || 60);
+    const [competitorEconDiscount, setCompetitorEconDiscount] = useState(30.0);
+    const [optimizerResults, setOptimizerResults] = useState(null);
+    const [optimizerLoading, setOptimizerLoading] = useState(false);
+
     // Run Monte Carlo when params change
     useEffect(() => {
         if (!results || !lotData) return;
@@ -78,6 +84,32 @@ export default function Dashboard({ results, simulationData, myDiscount, competi
         const timer = setTimeout(runMC, 1000); // debounce
         return () => clearTimeout(timer);
     }, [myDiscount, competitorDiscount, results?.technical_score, lotKey]);
+
+    // Run optimizer when competitor inputs change
+    useEffect(() => {
+        if (!results || !lotData) return;
+
+        const runOptimizer = async () => {
+            setOptimizerLoading(true);
+            try {
+                const res = await axios.post(`${API_URL}/optimize-discount`, {
+                    lot_key: lotKey,
+                    base_amount: lotData.base_amount,
+                    my_tech_score: results.technical_score,
+                    competitor_tech_score: competitorTechScore,
+                    competitor_discount: competitorEconDiscount
+                });
+                setOptimizerResults(res.data);
+            } catch (err) {
+                console.error("Optimizer Error", err);
+            } finally {
+                setOptimizerLoading(false);
+            }
+        };
+
+        const timer = setTimeout(runOptimizer, 1000); // debounce
+        return () => clearTimeout(timer);
+    }, [competitorTechScore, competitorEconDiscount, results?.technical_score, lotKey]);
 
     const handleExport = async () => {
         setExportLoading(true);
@@ -142,6 +174,144 @@ export default function Dashboard({ results, simulationData, myDiscount, competi
             {/* Strategic Analysis (Monte Carlo) */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 overflow-hidden relative">
                 <div className="relative z-10">
+                    {/* Competitor Inputs for Optimizer */}
+                    <div className="mb-6 pb-6 border-b border-slate-100">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Target className="w-4 h-4 text-indigo-500" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Competitor da Battere</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-semibold text-slate-600 mb-2 block">
+                                    Punteggio Tecnico Competitor
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max={lotData?.max_tech_score || 60}
+                                        step="0.5"
+                                        value={competitorTechScore}
+                                        onChange={(e) => setCompetitorTechScore(parseFloat(e.target.value))}
+                                        className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                    />
+                                    <span className="text-sm font-bold text-slate-800 w-12 text-right">
+                                        {formatNumber(competitorTechScore, 1)}
+                                    </span>
+                                </div>
+                                <div className="text-[10px] text-slate-500 mt-1">
+                                    Max: {lotData?.max_tech_score || 60}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-slate-600 mb-2 block">
+                                    Sconto Economico Competitor
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="70"
+                                        step="0.5"
+                                        value={competitorEconDiscount}
+                                        onChange={(e) => setCompetitorEconDiscount(parseFloat(e.target.value))}
+                                        className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                    />
+                                    <span className="text-sm font-bold text-slate-800 w-12 text-right">
+                                        {formatNumber(competitorEconDiscount, 1)}%
+                                    </span>
+                                </div>
+                                <div className="text-[10px] text-slate-500 mt-1">
+                                    Range: 0-70%
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Optimizer Results - Discount Scenarios */}
+                        {optimizerLoading ? (
+                            <div className="mt-4 flex items-center justify-center py-8">
+                                <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                            </div>
+                        ) : optimizerResults && (
+                            <div className="mt-4 space-y-3">
+                                {/* Competitor Summary */}
+                                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                    <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Competitor Totale</div>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-xl font-bold text-slate-800">{formatNumber(optimizerResults.competitor_total_score, 1)}</span>
+                                        <span className="text-xs text-slate-500">
+                                            (Tech: {formatNumber(optimizerResults.competitor_tech_score, 1)} + Econ: {formatNumber(optimizerResults.competitor_econ_score, 1)})
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Scenarios Grid */}
+                                <div className="text-[10px] text-slate-600 uppercase font-bold mb-2">Scenari Ottimali di Sconto</div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {optimizerResults.scenarios?.map((scenario) => {
+                                        const colorClasses = {
+                                            'Conservativo': 'border-yellow-200 bg-yellow-50',
+                                            'Bilanciato': 'border-blue-200 bg-blue-50',
+                                            'Aggressivo': 'border-orange-200 bg-orange-50',
+                                            'Sicuro': 'border-green-200 bg-green-50'
+                                        };
+                                        const textColorClasses = {
+                                            'Conservativo': 'text-yellow-700',
+                                            'Bilanciato': 'text-blue-700',
+                                            'Aggressivo': 'text-orange-700',
+                                            'Sicuro': 'text-green-700'
+                                        };
+
+                                        return (
+                                            <div
+                                                key={scenario.name}
+                                                className={`p-3 rounded-lg border-2 ${colorClasses[scenario.name] || 'border-slate-200 bg-slate-50'} transition-all hover:shadow-md cursor-pointer`}
+                                            >
+                                                <div className={`text-xs font-bold mb-2 ${textColorClasses[scenario.name] || 'text-slate-700'}`}>
+                                                    {scenario.name}
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <div className="flex justify-between items-baseline">
+                                                        <span className="text-[10px] text-slate-500">Sconto</span>
+                                                        <span className="text-lg font-bold text-slate-800">
+                                                            {formatNumber(scenario.suggested_discount, 1)}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-baseline">
+                                                        <span className="text-[10px] text-slate-500">Score Totale</span>
+                                                        <span className="text-sm font-bold text-slate-700">
+                                                            {formatNumber(scenario.resulting_total_score, 1)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-baseline">
+                                                        <span className="text-[10px] text-slate-500">Win Prob</span>
+                                                        <span className={`text-sm font-bold ${scenario.win_probability >= 90 ? 'text-green-600' : scenario.win_probability >= 80 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                                            {formatNumber(scenario.win_probability, 1)}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-baseline">
+                                                        <span className="text-[10px] text-slate-500">Delta vs Comp</span>
+                                                        <span className={`text-xs font-bold ${scenario.delta_vs_competitor > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                            {scenario.delta_vs_competitor > 0 ? '+' : ''}{formatNumber(scenario.delta_vs_competitor, 1)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="pt-1.5 border-t border-slate-200 mt-1.5">
+                                                        <div className="flex justify-between items-baseline">
+                                                            <span className="text-[10px] text-slate-500">Costo Sconto</span>
+                                                            <span className="text-xs font-semibold text-red-600">
+                                                                -{formatCurrency(scenario.economic_impact)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2 text-slate-400">
                             <TrendingUp className="w-4 h-4 text-blue-500" />
@@ -287,7 +457,7 @@ export default function Dashboard({ results, simulationData, myDiscount, competi
 
                                 {/* Competitor Threshold Line */}
                                 <ReferenceLine
-                                    y={monteCarlo?.avg_total_score || 95}
+                                    y={monteCarlo?.competitor_threshold || 95}
                                     stroke="#f97316"
                                     strokeDasharray="4 4"
                                     label={{ position: 'right', value: t('dashboard.threshold_win'), fill: '#f97316', fontSize: 10, fontWeight: 'bold' }}

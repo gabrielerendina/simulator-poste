@@ -100,6 +100,15 @@ class MonteCarloRequest(BaseModel):
     iterations: int = Field(ge=1, le=10000, default=500, description="Iterations must be between 1 and 10000")
 
 
+class OptimizeDiscountRequest(BaseModel):
+    """Request to optimize discount against specific competitor"""
+    lot_key: str
+    base_amount: float = Field(gt=0, description="Base amount must be greater than 0")
+    my_tech_score: float = Field(ge=0, description="My technical score")
+    competitor_tech_score: float = Field(ge=0, description="Competitor technical score")
+    competitor_discount: float = Field(ge=0, le=100, description="Competitor discount %")
+
+
 class ExportPDFRequest(BaseModel):
     """Request to export PDF report"""
     lot_key: str
