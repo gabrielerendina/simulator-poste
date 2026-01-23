@@ -27,11 +27,8 @@ RUN npm run build
 # Fase 2: Service con Nginx
 FROM nginx:alpine
 
-# Crea un user non-root per security
-RUN addgroup -g 1000 nginx && adduser -u 1000 -G nginx -s /sbin/nologin -D nginx
-
 # Copia la build di Vite nella directory dei file statici di Nginx
-COPY --from=build --chown=nginx:nginx /app/dist /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 
 # Aggiungi una configurazione Nginx per gestire il routing SPA
 RUN echo 'server { \
@@ -48,9 +45,6 @@ RUN echo 'server { \
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
     } \
     }' > /etc/nginx/conf.d/default.conf
-
-# Cambia user a nginx non-root
-USER nginx
 
 EXPOSE 80
 
