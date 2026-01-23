@@ -3,7 +3,7 @@ name: Deploy to Kyma
 on:
   workflow_run:
     workflows: ["Build and Push Docker Images"]
-    branches: [kyma]
+    branches: [kyma, main]
     types: [completed]
   workflow_dispatch:
 
