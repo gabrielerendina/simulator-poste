@@ -22,25 +22,16 @@ jobs:
       with:
         version: 'v1.28.0'
 
-    - name: Setup kubeconfig
-      env:
-        KUBECONFIG_BASE64: ${{ secrets.KUBECONFIG }}
+    - name: Configure Kyma kubeconfig
       run: |
-        echo "$KUBECONFIG_BASE64" | base64 -d > kubeconfig.yaml
-        echo "KUBECONFIG=$(pwd)/kubeconfig.yaml" >> $GITHUB_ENV
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+        chmod 600 ~/.kube/config
 
-    - name: Install kubelogin (OIDC plugin)
+    - name: Verify cluster connection
       run: |
-        curl -LO https://github.com/int128/kubelogin/releases/download/v1.28.0/kubelogin_linux_amd64.zip
-        unzip -o kubelogin_linux_amd64.zip
-        sudo mv kubelogin /usr/local/bin/kubectl-oidc_login
-        sudo chmod +x /usr/local/bin/kubectl-oidc_login
-        kubectl-oidc_login --version
-
-    - name: Verify kubectl connection
-      run: |
-        kubectl version --client
         kubectl cluster-info
+        kubectl get namespaces
 
     - name: Create namespace
       run: |
