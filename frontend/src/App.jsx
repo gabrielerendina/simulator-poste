@@ -17,7 +17,7 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Main app content (to be wrapped with auth)
 function AppContent() {
-  const { getAccessToken, handleCallback } = useAuth();
+  const { getAccessToken, handleCallback, isAuthenticated, isLoading: authLoading } = useAuth();
   const { t } = useTranslation();
   const [view, setView] = useState('dashboard'); // dashboard, config, master
   const [config, setConfig] = useState(null);
@@ -60,10 +60,10 @@ function AppContent() {
     };
   }, [getAccessToken]);
 
-  // Handle OIDC callback
+  // Handle OIDC callback - wait for auth to be ready
   useEffect(() => {
     const handleOIDCCallback = async () => {
-      if (window.location.pathname === '/callback') {
+      if (window.location.pathname === '/callback' && !authLoading) {
         try {
           await handleCallback();
           setView('dashboard');
@@ -73,10 +73,15 @@ function AppContent() {
       }
     };
     handleOIDCCallback();
-  }, [handleCallback]);
+  }, [handleCallback, authLoading]);
 
-  // Fetch initial data
+  // Fetch initial data - only when authenticated
   useEffect(() => {
+    // Don't fetch if still processing auth or not authenticated
+    if (authLoading || !isAuthenticated) {
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const [configRes, masterRes] = await Promise.all([
@@ -95,7 +100,7 @@ function AppContent() {
       }
     };
     fetchData();
-  }, []);
+  }, [isAuthenticated, authLoading]);
 
   // Update simulation state when lot changes
   useEffect(() => {
