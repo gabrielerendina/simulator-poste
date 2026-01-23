@@ -32,7 +32,7 @@ jobs:
     - name: Install kubelogin (OIDC plugin)
       run: |
         curl -LO https://github.com/int128/kubelogin/releases/download/v1.28.0/kubelogin_linux_amd64.zip
-        unzip kubelogin_linux_amd64.zip
+        unzip -o kubelogin_linux_amd64.zip
         sudo mv kubelogin /usr/local/bin/kubectl-oidc_login
         sudo chmod +x /usr/local/bin/kubectl-oidc_login
         kubectl-oidc_login --version
