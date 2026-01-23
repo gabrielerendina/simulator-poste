@@ -40,9 +40,9 @@ spec:
               key: LOG_LEVEL
         - name: OIDC_ISSUER
           valueFrom:
-            configMapKeyRef:
-              name: backend-config
-              key: OIDC_ISSUER
+            secretKeyRef:
+              name: oidc-credentials
+              key: issuer
         - name: OIDC_CLIENT_ID
           valueFrom:
             secretKeyRef:
