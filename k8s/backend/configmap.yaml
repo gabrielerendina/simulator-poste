@@ -9,5 +9,5 @@ data:
   ENVIRONMENT: "production"
   LOG_LEVEL: "INFO"
   OIDC_ISSUER: "https://kyma.accounts.ondemand.com"
-  # Frontend URL for CORS (will be updated with actual ingress URL)
-  FRONTEND_URL: "https://simulator-poste-dev-xytwh0n6.kyma.ondemand.com"
+  # Frontend URL for CORS
+  FRONTEND_URL: "https://simulator-poste.b66a502.kyma.ondemand.com"

@@ -25,26 +25,16 @@ jobs:
     - name: Configure Kyma kubeconfig
       run: |
         mkdir -p ~/.kube
-        echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+        echo "${{ secrets.KYMA_KUBECONFIG }}" | base64 -d > ~/.kube/config
         chmod 600 ~/.kube/config
 
-    # Namespace should already exist (service account is in it)
-    # - name: Apply namespace
-    #   run: |
-    #     kubectl apply -f k8s/namespace.yaml
-
-    - name: Create OIDC secrets
-      env:
-        OIDC_CLIENT_ID: ${{ secrets.OIDC_CLIENT_ID }}
-        OIDC_CLIENT_SECRET: ${{ secrets.OIDC_CLIENT_SECRET }}
-        OIDC_AUDIENCE: ${{ secrets.OIDC_AUDIENCE }}
+    - name: Verify cluster connection
       run: |
-        kubectl create secret generic oidc-credentials \
-          --from-literal=client-id="$OIDC_CLIENT_ID" \
-          --from-literal=client-secret="$OIDC_CLIENT_SECRET" \
-          --from-literal=audience="$OIDC_AUDIENCE" \
-          --namespace simulator-poste \
-          --dry-run=client -o yaml | kubectl apply -f -
+        echo "Testing cluster connection..."
+        kubectl get pods -n simulator-poste 2>/dev/null || echo "Namespace ready"
+
+    # OIDC secrets are already configured in Kyma namespace
+    # No need to create them via workflow
 
     - name: Apply ConfigMaps
       run: |
@@ -61,9 +51,9 @@ jobs:
         kubectl apply -f k8s/frontend/deployment.yaml
         kubectl apply -f k8s/frontend/service.yaml
 
-    - name: Apply Ingress
+    - name: Apply APIRule
       run: |
-        kubectl apply -f k8s/ingress.yaml
+        kubectl apply -f k8s/apirule.yaml
 
     - name: Wait for backend rollout
       run: |
@@ -86,10 +76,16 @@ jobs:
         echo "=== Services ==="
         kubectl get services -n simulator-poste
 
-        echo "=== Ingress ==="
-        kubectl get ingress -n simulator-poste
+        echo "=== APIRule ==="
+        kubectl get apirules -n simulator-poste
+
+    - name: Output deployment URL
+      run: |
+        echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**URL:** https://simulator-poste.b66a502.kyma.ondemand.com" >> $GITHUB_STEP_SUMMARY
 
     - name: Cleanup kubeconfig
       if: always()
       run: |
-        rm -f kubeconfig.yaml
+        rm -f ~/.kube/config

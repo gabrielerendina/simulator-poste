@@ -1,0 +1,56 @@
+# Simulator Poste - Kyma APIRule v2
+# Exposes frontend and backend services via Kyma gateway
+apiVersion: gateway.kyma-project.io/v2
+kind: APIRule
+metadata:
+  name: simulator-poste
+  namespace: simulator-poste
+  labels:
+    app: simulator-poste
+spec:
+  # Host for the application
+  hosts:
+    - simulator-poste.b66a502.kyma.ondemand.com
+
+  # The Kyma gateway to use
+  gateway: kyma-system/kyma-gateway
+
+  # Default service (frontend for SPA)
+  service:
+    name: frontend-service
+    port: 80
+
+  # Access rules
+  rules:
+    # API routes - forward to backend
+    - path: /api/*
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+        - OPTIONS
+      noAuth: true
+      service:
+        name: backend-service
+        port: 8000
+
+    # Health endpoints for backend
+    - path: /health/*
+      methods:
+        - GET
+      noAuth: true
+      service:
+        name: backend-service
+        port: 8000
+
+    # All other routes - forward to frontend (SPA)
+    - path: /*
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      noAuth: true

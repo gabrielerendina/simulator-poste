@@ -10,5 +10,5 @@ data:
   # They are here for reference and documentation
   VITE_API_URL: "/api"
   VITE_OIDC_AUTHORITY: "https://kyma.accounts.ondemand.com"
-  VITE_OIDC_REDIRECT_URI: "https://simulator-poste-dev-xytwh0n6.kyma.ondemand.com/callback"
-  VITE_OIDC_POST_LOGOUT_REDIRECT_URI: "https://simulator-poste-dev-xytwh0n6.kyma.ondemand.com"
+  VITE_OIDC_REDIRECT_URI: "https://simulator-poste.b66a502.kyma.ondemand.com/callback"
+  VITE_OIDC_POST_LOGOUT_REDIRECT_URI: "https://simulator-poste.b66a502.kyma.ondemand.com"
