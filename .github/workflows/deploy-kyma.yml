@@ -55,6 +55,11 @@ jobs:
       run: |
         kubectl apply -f k8s/apirule.yaml
 
+    - name: Restart deployments
+      run: |
+        kubectl rollout restart deployment/simulator-poste-backend -n simulator-poste
+        kubectl rollout restart deployment/simulator-poste-frontend -n simulator-poste
+
     - name: Wait for backend rollout
       run: |
         kubectl rollout status deployment/simulator-poste-backend -n simulator-poste --timeout=5m
