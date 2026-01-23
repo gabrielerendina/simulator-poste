@@ -23,7 +23,7 @@ spec:
   # Access rules
   rules:
     # API routes - forward to backend
-    - path: /api/*
+    - path: /api/{**}
       methods:
         - GET
         - POST
@@ -37,7 +37,7 @@ spec:
         port: 8000
 
     # Health endpoints for backend
-    - path: /health/*
+    - path: /health/{**}
       methods:
         - GET
       noAuth: true
