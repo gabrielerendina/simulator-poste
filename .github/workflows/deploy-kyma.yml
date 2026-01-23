@@ -28,17 +28,10 @@ jobs:
         echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
         chmod 600 ~/.kube/config
 
-    - name: Verify cluster connection
-      run: |
-        kubectl get namespace simulator-poste || kubectl create namespace simulator-poste
-
-    - name: Create namespace
-      run: |
-        kubectl create namespace simulator-poste --dry-run=client -o yaml | kubectl apply -f -
-
-    - name: Apply namespace
-      run: |
-        kubectl apply -f k8s/namespace.yaml
+    # Namespace should already exist (service account is in it)
+    # - name: Apply namespace
+    #   run: |
+    #     kubectl apply -f k8s/namespace.yaml
 
     - name: Create OIDC secrets
       env:
