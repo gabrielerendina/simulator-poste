@@ -27,6 +27,16 @@ RUN npm run build
 # Fase 2: Service con Nginx
 FROM nginx:alpine
 
+# Create nginx cache directories with correct permissions for non-root user
+RUN mkdir -p /var/cache/nginx/client_temp \
+    /var/cache/nginx/proxy_temp \
+    /var/cache/nginx/fastcgi_temp \
+    /var/cache/nginx/uwsgi_temp \
+    /var/cache/nginx/scgi_temp \
+    && chmod -R 777 /var/cache/nginx \
+    && chmod -R 777 /var/run \
+    && chmod -R 777 /etc/nginx/conf.d
+
 # Copia la build di Vite nella directory dei file statici di Nginx
 COPY --from=build /app/dist /usr/share/nginx/html
 
