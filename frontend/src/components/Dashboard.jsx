@@ -64,21 +64,6 @@ export default function Dashboard({ results, simulationData, myDiscount, competi
     const [optimizerResults, setOptimizerResults] = useState(null);
     const [optimizerLoading, setOptimizerLoading] = useState(false);
 
-    // Show loading skeleton when no results yet
-    if (!results || !lotData) {
-        return (
-            <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <SkeletonGauge />
-                    <SkeletonGauge />
-                    <SkeletonGauge />
-                </div>
-                <SkeletonCard />
-                <SkeletonCard />
-            </div>
-        );
-    }
-
     // Run Monte Carlo when params change
     useEffect(() => {
         if (!results || !lotData) return;
@@ -176,7 +161,20 @@ export default function Dashboard({ results, simulationData, myDiscount, competi
         }
     };
 
-    if (!results) return null;
+    // Show loading skeleton when no results yet (AFTER all hooks!)
+    if (!results || !lotData) {
+        return (
+            <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <SkeletonGauge />
+                    <SkeletonGauge />
+                    <SkeletonGauge />
+                </div>
+                <SkeletonCard />
+                <SkeletonCard />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 sticky top-6">
