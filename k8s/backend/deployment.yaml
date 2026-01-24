@@ -21,6 +21,8 @@ spec:
       annotations:
         sidecar.istio.io/inject: "true"
     spec:
+      securityContext:
+        fsGroup: 1000
       containers:
       - name: backend
         image: ghcr.io/raistlin82/simulator-poste-backend:latest
