@@ -6,7 +6,7 @@ import TechEvaluator from './components/TechEvaluator';
 import Dashboard from './components/Dashboard';
 import ConfigPage from './components/ConfigPage';
 import MasterDataConfig from './components/MasterDataConfig';
-import { Settings } from 'lucide-react';
+import { Settings, Menu, X } from 'lucide-react';
 import { formatCurrency, formatNumber } from './utils/formatters';
 import { logger } from './utils/logger';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -28,6 +28,7 @@ function AppContent() {
   });
   const [selectedLot, setSelectedLot] = useState("Lotto 1");
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar state
 
   // State for Inputs
   const [baseAmount, setBaseAmount] = useState(0);
@@ -212,31 +213,56 @@ function AppContent() {
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-900">
+      {/* Mobile overlay backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      <Sidebar
-        config={config}
-        selectedLotKey={selectedLot}
-        onSelectLot={setSelectedLot}
-        baseAmount={baseAmount}
-        competitorDiscount={competitorDiscount}
-        setCompetitorDiscount={setCompetitorDiscount}
-        myDiscount={myDiscount}
-        setMyDiscount={setMyDiscount}
-        results={results}
-        onSaveState={handleSaveState}
-      />
+      {/* Sidebar - responsive */}
+      <div className={`
+        fixed md:static inset-y-0 left-0 z-50
+        transform transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <Sidebar
+          config={config}
+          selectedLotKey={selectedLot}
+          onSelectLot={setSelectedLot}
+          baseAmount={baseAmount}
+          competitorDiscount={competitorDiscount}
+          setCompetitorDiscount={setCompetitorDiscount}
+          myDiscount={myDiscount}
+          setMyDiscount={setMyDiscount}
+          results={results}
+          onSaveState={handleSaveState}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+      </div>
 
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         <header className="bg-white border-b border-slate-200 p-4 shadow-sm z-10">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 md:gap-6">
+              {/* Hamburger button - mobile only */}
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="md:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                aria-label="Toggle menu"
+              >
+                <Menu className="w-6 h-6 text-slate-600" />
+              </button>
+
               <div className="flex items-center gap-3">
-                <img src="/poste-italiane-logo.svg" alt="Poste Italiane" className="h-8 object-contain" />
-                <div className="w-px h-8 bg-slate-200"></div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <img src="/poste-italiane-logo.svg" alt="Poste Italiane" className="h-6 md:h-8 object-contain" />
+                <div className="hidden sm:block w-px h-8 bg-slate-200"></div>
+                <h1 className="text-base md:text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   {t('app.title')}
                 </h1>
-                <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full shadow-sm">
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full shadow-sm">
                   <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     {view === 'dashboard' ? t('common.home') : view === 'config' ? t('common.gara_lotto') : t('common.master_data')}
@@ -244,26 +270,30 @@ function AppContent() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <button
                 onClick={() => setView('dashboard')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-medium text-sm ${view === 'dashboard' ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+                className={`flex items-center gap-2 px-2 md:px-4 py-2 rounded-xl transition-all font-medium text-sm ${view === 'dashboard' ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+                aria-label="Home"
               >
-                🏠 {t('common.home')}
+                <span className="text-lg md:hidden">🏠</span>
+                <span className="hidden md:inline">🏠 {t('common.home')}</span>
               </button>
               <button
                 onClick={() => setView('config')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-medium text-sm ${view === 'config' ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+                className={`flex items-center gap-2 px-2 md:px-4 py-2 rounded-xl transition-all font-medium text-sm ${view === 'config' ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+                aria-label="Configurazione"
               >
                 <Settings className="w-4 h-4" />
-                {t('sidebar.config_btn')}
+                <span className="hidden md:inline">{t('sidebar.config_btn')}</span>
               </button>
               <button
                 onClick={() => setView('master')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-medium text-sm ${view === 'master' ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+                className={`hidden sm:flex items-center gap-2 px-2 md:px-4 py-2 rounded-xl transition-all font-medium text-sm ${view === 'master' ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+                aria-label="Master Data"
               >
                 <Settings className="w-4 h-4" />
-                {t('common.master_data')}
+                <span className="hidden md:inline">{t('common.master_data')}</span>
               </button>
               <LogoutButton />
             </div>
@@ -317,8 +347,8 @@ function AppContent() {
         ) : view === 'master' ? (
           <MasterDataConfig onBack={() => setView('dashboard')} />
         ) : (
-          <div className="flex-1 overflow-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-7 space-y-6">
+          <div className="flex-1 overflow-auto p-3 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
+            <div className="lg:col-span-7 space-y-4 md:space-y-6">
               <TechEvaluator
                 lotData={config?.[selectedLot]}
                 inputs={techInputs}
@@ -328,7 +358,7 @@ function AppContent() {
                 results={results}
               />
             </div>
-            <div className="lg:col-span-5 space-y-6">
+            <div className="lg:col-span-5 space-y-4 md:space-y-6">
               <Dashboard
                 results={results}
                 simulationData={simulationData}

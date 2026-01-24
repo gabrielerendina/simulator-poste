@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sliders, Settings, Check, Save } from 'lucide-react';
+import { Sliders, Settings, Check, Save, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency, formatNumber } from '../utils/formatters';
 
@@ -9,7 +9,9 @@ export default function Sidebar({
     competitorDiscount, setCompetitorDiscount,
     myDiscount, setMyDiscount,
     results,
-    onSaveState
+    onSaveState,
+    isOpen,
+    onClose
 }) {
     const { t } = useTranslation();
     const p_best = baseAmount * (1 - competitorDiscount / 100);
@@ -32,8 +34,16 @@ export default function Sidebar({
     return (
         <div className="w-80 bg-white border-r border-slate-200 flex flex-col h-full shadow-lg z-20">
             {/* Lutech Logo Banner */}
-            <div className="p-4 bg-gradient-to-br from-slate-50 to-white border-b border-slate-200 flex justify-center">
+            <div className="p-4 bg-gradient-to-br from-slate-50 to-white border-b border-slate-200 flex justify-between items-center">
                 <img src="/logo-lutech.png" alt="Lutech" className="h-10 object-contain" />
+                {/* Close button - mobile only */}
+                <button
+                    onClick={onClose}
+                    className="md:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    aria-label="Chiudi menu"
+                >
+                    <X className="w-5 h-5 text-slate-600" />
+                </button>
             </div>
 
             <div className="p-6 border-b border-slate-100 bg-slate-50">
@@ -45,7 +55,11 @@ export default function Sidebar({
                 <label className="block text-sm font-medium text-slate-700 mb-1">{t('sidebar.title')}</label>
                 <select
                     value={selectedLotKey}
-                    onChange={(e) => onSelectLot(e.target.value)}
+                    onChange={(e) => {
+                        onSelectLot(e.target.value);
+                        // Close sidebar on mobile after selection
+                        if (window.innerWidth < 768 && onClose) onClose();
+                    }}
                     className="w-full p-2 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                 >
                     {Object.keys(config).map(k => (
