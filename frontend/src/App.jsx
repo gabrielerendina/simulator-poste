@@ -42,6 +42,7 @@ function AppContent() {
   // Results State
   const [results, setResults] = useState(null);
   const [simulationData, setSimulationData] = useState([]);
+  const [mockMode, setMockMode] = useState(false); // Track if using mock data
 
   // Configure axios interceptor to add auth token
   useEffect(() => {
@@ -98,10 +99,27 @@ function AppContent() {
         logger.error("Failed to fetch initial data", err, { component: "App" });
 
         // Use mock data for frontend-only testing
+        setMockMode(true);
         const mockConfig = {
           "Lotto 1": {
-            name: "Lotto 1",
+            name: "Lotto 1 - Demo Mode",
             base_amount: 1000000,
+            alpha: 0.3,
+            max_econ_score: 40,
+            max_tech_score: 60,
+            max_raw_score: 100,
+            company_certs: [
+              { label: "ISO 9001", points: 2 },
+              { label: "ISO 27001", points: 2 }
+            ],
+            reqs: [
+              { id: "req1", label: "Team Size", type: "resource", max_points: 20, max_res: 10, max_certs: 5 },
+              { id: "req2", label: "Experience", type: "resource", max_points: 15, max_res: 8, max_certs: 3 }
+            ]
+          },
+          "Lotto 2": {
+            name: "Lotto 2 - Demo Mode",
+            base_amount: 800000,
             alpha: 0.3,
             max_econ_score: 40,
             max_tech_score: 60,
@@ -113,6 +131,25 @@ function AppContent() {
         setConfig(mockConfig);
         setSelectedLot("Lotto 1");
         setBaseAmount(1000000);
+
+        // Set mock results
+        setResults({
+          technical_score: 45.5,
+          economic_score: 28.3,
+          total_score: 73.8,
+          raw_technical_score: 75.8,
+          company_certs_score: 4.0,
+          details: {}
+        });
+
+        // Set mock simulation data
+        setSimulationData([
+          { discount: 10, total_score: 50.2, economic_score: 10.1 },
+          { discount: 20, total_score: 60.5, economic_score: 20.3 },
+          { discount: 30, total_score: 70.8, economic_score: 30.6 },
+          { discount: 40, total_score: 75.2, economic_score: 35.0 },
+          { discount: 50, total_score: 78.5, economic_score: 38.3 }
+        ]);
       } finally {
         setLoading(false);
       }
@@ -261,6 +298,15 @@ function AppContent() {
       </div>
 
       <main className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Demo mode banner */}
+        {mockMode && (
+          <div className="bg-yellow-100 border-b border-yellow-300 px-4 py-2 text-center">
+            <span className="text-sm font-medium text-yellow-800">
+              🎨 DEMO MODE - Frontend Only (Backend non disponibile)
+            </span>
+          </div>
+        )}
+
         <header className="bg-white border-b border-slate-200 p-4 shadow-sm z-10">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3 md:gap-6">
