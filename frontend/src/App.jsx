@@ -96,6 +96,23 @@ function AppContent() {
         setBaseAmount(configRes.data[firstLot].base_amount);
       } catch (err) {
         logger.error("Failed to fetch initial data", err, { component: "App" });
+
+        // Use mock data for frontend-only testing
+        const mockConfig = {
+          "Lotto 1": {
+            name: "Lotto 1",
+            base_amount: 1000000,
+            alpha: 0.3,
+            max_econ_score: 40,
+            max_tech_score: 60,
+            max_raw_score: 100,
+            company_certs: [],
+            reqs: []
+          }
+        };
+        setConfig(mockConfig);
+        setSelectedLot("Lotto 1");
+        setBaseAmount(1000000);
       } finally {
         setLoading(false);
       }
