@@ -8,6 +8,8 @@ metadata:
     component: api
 spec:
   replicas: 1  # SQLite requires single instance
+  strategy:
+    type: Recreate  # Required for PVC with ReadWriteOnce
   selector:
     matchLabels:
       app: simulator-poste-backend
