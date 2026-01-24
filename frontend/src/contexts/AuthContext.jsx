@@ -110,7 +110,7 @@ export const AuthProvider = ({ children }) => {
         }
     }, [userManager]);
 
-    // Logout function
+    // Logout function - simplified for SAP IAS compatibility
     const logout = useCallback(async () => {
         if (!userManager) {
             logger.error('UserManager not initialized');
@@ -119,12 +119,17 @@ export const AuthProvider = ({ children }) => {
 
         try {
             setError(null);
-            await userManager.signoutRedirect();
+            // Clear local session without IAS front-channel logout
+            // (SAP IAS has issues with standard OIDC logout)
+            await userManager.removeUser();
+            setUser(null);
+            // Redirect to home
+            window.location.href = '/';
         } catch (err) {
             logger.error('Logout failed:', err);
             setError(getAuthErrorMessage(err));
-            // Fallback: clear user anyway
             setUser(null);
+            window.location.href = '/';
         }
     }, [userManager]);
 
