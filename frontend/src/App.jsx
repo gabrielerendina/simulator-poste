@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import Sidebar from './components/Sidebar';
@@ -45,6 +45,7 @@ function AppContent() {
   const [view, setView] = useState('dashboard'); // dashboard, config, master
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar state
+  const lastLoadedLot = useRef(null); // Track last loaded lot to prevent loops
 
   // Derived values from context
   const baseAmount = config && selectedLot && config[selectedLot] ? config[selectedLot].base_amount : 0;
@@ -102,7 +103,7 @@ function AppContent() {
 
   // Update simulation state when lot changes - load saved state
   useEffect(() => {
-    if (config && selectedLot) {
+    if (config && selectedLot && lastLoadedLot.current !== selectedLot) {
       const lot = config[selectedLot];
 
       // Load saved state if available, otherwise use defaults
@@ -113,6 +114,8 @@ function AppContent() {
         techInputs: lot.state?.tech_inputs ?? {},
         companyCerts: lot.state?.company_certs ?? {}
       });
+
+      lastLoadedLot.current = selectedLot;
     }
   }, [selectedLot, config, resetState]);
 
