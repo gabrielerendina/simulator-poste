@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { logger } from '../../../utils/logger';
 
@@ -18,7 +18,7 @@ export const ConfigProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchConfig = async () => {
+  const fetchConfig = useCallback(async () => {
     try {
       setLoading(true);
       const [configRes, masterRes] = await Promise.all([
@@ -34,9 +34,9 @@ export const ConfigProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const updateConfig = async (newConfig) => {
+  const updateConfig = useCallback(async (newConfig) => {
     try {
       await axios.post('/api/config', newConfig);
       setConfig(newConfig);
@@ -45,7 +45,7 @@ export const ConfigProvider = ({ children }) => {
       logger.error('Failed to update config', err);
       return { success: false, error: err.message };
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchConfig();

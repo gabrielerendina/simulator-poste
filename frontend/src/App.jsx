@@ -170,13 +170,6 @@ function AppContent() {
     return () => clearTimeout(timer);
   }, [myDiscount, competitorDiscount, techInputs, companyCerts, selectedLot]);
 
-  // Refetch master data when entering config or master views to ensure fresh sync
-  useEffect(() => {
-    if (view === 'config' || view === 'master') {
-      refetchConfig();
-    }
-  }, [view, refetchConfig]);
-
   // Main Calculation Effect
   useEffect(() => {
     if (!config || !selectedLot) return;
