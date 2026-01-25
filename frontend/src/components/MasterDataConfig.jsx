@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Save, Plus, Trash2, ShieldCheck, Award, Tag, Info } from 'lucide-react';
+import { useToast } from '../shared/components/ui/Toast';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export default function MasterDataConfig({ onBack }) {
     const { t } = useTranslation();
+    const { success, error: showError } = useToast();
     const [data, setData] = useState({
         company_certs: [],
         prof_certs: [],
@@ -34,10 +36,10 @@ export default function MasterDataConfig({ onBack }) {
         setSaving(true);
         try {
             await axios.post(`${API_URL}/master-data`, data);
-            alert(t('master.save_success'));
+            success(t('master.save_success') || 'Master Data salvati con successo');
         } catch (error) {
             console.error("Error saving master data:", error);
-            alert(t('common.error'));
+            showError(t('common.error') || 'Errore durante il salvataggio');
         } finally {
             setSaving(false);
         }

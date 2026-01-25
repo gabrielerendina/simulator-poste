@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Save, X } from 'lucide-react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../shared/components/ui/Toast';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -15,6 +16,7 @@ const JUDGMENT_LEVELS = [
 
 export default function RubricConfigurator({ lotKey, lotConfig, onUpdate, onClose }) {
     const { t } = useTranslation();
+    const { success, error: showError } = useToast();
     const [criteria, setCriteria] = useState({});
     const [judgments, setJudgments] = useState({});
     const [saving, setSaving] = useState(false);
@@ -143,10 +145,10 @@ export default function RubricConfigurator({ lotKey, lotConfig, onUpdate, onClos
                 onUpdate(updatedConfig);
             }
 
-            alert(t('config.save_success'));
+            success(t('config.save_success') || 'Configurazione salvata con successo');
         } catch (error) {
             console.error('Errore nel salvataggio:', error);
-            alert(t('config.save_error'));
+            showError(t('config.save_error') || 'Errore durante il salvataggio');
         } finally {
             setSaving(false);
         }

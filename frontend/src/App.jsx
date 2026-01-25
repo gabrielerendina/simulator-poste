@@ -14,7 +14,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LogoutButton from './components/LogoutButton';
 import { ConfigProvider, useConfig } from './features/config/context/ConfigContext';
 import { SimulationProvider, useSimulation } from './features/simulation/context/SimulationContext';
-import { ToastProvider } from './shared/components/ui/Toast';
+import { ToastProvider, useToast } from './shared/components/ui/Toast';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -22,6 +22,7 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 function AppContent() {
   const { getAccessToken, handleCallback, isAuthenticated, isLoading: authLoading } = useAuth();
   const { t } = useTranslation();
+  const { success, error: showError } = useToast();
 
   // Use contexts instead of local state
   const { config, masterData, loading: configLoading, updateConfig, refetch: refetchConfig } = useConfig();
@@ -311,13 +312,13 @@ function AppContent() {
               try {
                 const result = await updateConfig(newCfg);
                 if (result.success) {
-                  alert(t('config.save_success') || '✓ Configurazione salvata con successo');
+                  success(t('config.save_success') || 'Configurazione salvata con successo');
                 } else {
-                  alert(t('config.save_error'));
+                  showError(t('config.save_error') || 'Errore durante il salvataggio');
                 }
               } catch (err) {
                 logger.error("Failed to save configuration", err, { component: "ConfigPage" });
-                alert(t('config.save_error'));
+                showError(t('config.save_error') || 'Errore durante il salvataggio');
               }
             }}
             onAddLot={async (lotName) => {
@@ -325,10 +326,10 @@ function AppContent() {
                 await axios.post(`${API_URL}/config/add?lot_key=${encodeURIComponent(lotName)}`);
                 await refetchConfig();
                 setLot(lotName);
-                alert(t('app.add_success', { name: lotName }));
+                success(t('app.add_success', { name: lotName }) || `Lotto "${lotName}" aggiunto con successo`);
               } catch (err) {
                 logger.error("Failed to add lot", err, { component: "ConfigPage", lotName });
-                alert(t('app.add_error'));
+                showError(t('app.add_error') || 'Errore durante l\'aggiunta del lotto');
               }
             }}
             onDeleteLot={async (lotKey) => {
@@ -338,10 +339,10 @@ function AppContent() {
                 await refetchConfig();
                 // Refresh will trigger auto-select of first available lot
                 setView('dashboard');
-                alert(t('app.delete_success', { name: lotKey }));
+                success(t('app.delete_success', { name: lotKey }) || `Lotto "${lotKey}" eliminato con successo`);
               } catch (err) {
                 logger.error("Failed to delete lot", err, { component: "ConfigPage", lotKey });
-                alert(t('app.delete_error'));
+                showError(t('app.delete_error') || 'Errore durante l\'eliminazione del lotto');
               }
             }}
             onBack={() => setView('dashboard')}
