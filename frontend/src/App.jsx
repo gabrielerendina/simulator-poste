@@ -355,7 +355,7 @@ function AppContent() {
                 simulationData={simulationData}
                 myDiscount={myDiscount}
                 competitorDiscount={competitorDiscount}
-                lotData={config[selectedLot]}
+                lotData={config?.[selectedLot]}
                 lotKey={selectedLot}
               />
             </div>
