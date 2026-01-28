@@ -33,6 +33,10 @@ class Requirement(BaseModel):
     bonus_val: Optional[float] = 0.0
     sub_reqs: Optional[List[Dict[str, Any]]] = None
     criteria: Optional[List[Dict[str, Any]]] = None
+    selected_prof_certs: Optional[List[str]] = Field(default_factory=list)
+    attestazione_label: Optional[str] = None
+    attestazione_score: Optional[float] = 0.0
+    custom_metrics: Optional[List[Dict[str, Any]]] = None  # [{id, label, min, max}]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -68,6 +72,8 @@ class TechInput(BaseModel):
     c_val: Optional[int] = 0
     sub_req_vals: Optional[List[Dict[str, Any]]] = None
     bonus_active: Optional[bool] = False
+    attestazione_active: Optional[bool] = False
+    custom_metric_vals: Optional[Dict[str, float]] = None # {metric_id: value}
 
 
 class CalculateRequest(BaseModel):

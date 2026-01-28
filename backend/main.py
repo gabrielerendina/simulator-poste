@@ -413,16 +413,10 @@ def calculate_prof_score(R, C, max_res, max_points, max_certs=5):
     Returns:
         Score capped at max_points
     """
-    # Limit R and C to their maximums
-    R = min(R, max_res)
-    C = min(C, max_certs)
-
-    # Ensure C doesn't exceed R
-    if R < C:
-        C = R
-
-    # Calculate score: base points for resources + bonus for certifications
-    # Each resource = 2 points base, each certification adds R points
+    # Use user provided values directly without capping R or C based on defaults
+    # Logic: (2 * R) + (R * C)
+    
+    # However, we still respect the explicit max_points if provided in config (which we set to 1000 now)
     score = (2 * R) + (R * C)
 
     # Cap at maximum points allowed
@@ -432,6 +426,80 @@ def calculate_prof_score(R, C, max_res, max_points, max_certs=5):
 # --- API ROUTER (Business endpoints with /api prefix) ---
 api_router = APIRouter(prefix="/api")
 
+
+def calculate_max_points_for_req(req):
+    """
+    Calculate the theoretical maximum points for a given requirement configuration.
+    """
+    req_type = req.get("type")
+    
+    if req_type == "resource":
+        # Formula: (2 * R) + (R * C)
+        # We use 'max_res' and 'max_certs' from config. 
+        # Fallback to 'prof_R'/'prof_C' if max not explicit, but ideally should be explicit.
+        R = req.get("max_res") or req.get("prof_R", 0)
+        C = req.get("max_certs") or req.get("prof_C", 0)
+        
+        # If user hasn't updated config yet, these might be low defaults. 
+        # But we must trust the config.
+        return (2 * R) + (R * C)
+        
+    elif req_type in ["reference", "project"]:
+        # Max = (Sum of weights * 5) + Bonus + Attestazione + Custom Metrics
+        
+        # 1. Sub-reqs (criteria)
+        criteria = req.get("criteria") or req.get("sub_reqs") or []
+        weight_sum = sum(float(c.get("weight", 1)) for c in criteria)
+        # Max value for a criteria is 5 (tabulated judgement)
+        sub_score_max = weight_sum * 5.0
+        
+        # 2. Attestazione
+        att_score = float(req.get("attestazione_score", 0.0))
+        # Check if bonus_label implies attestazione is a bonus type? 
+        # Current config uses "bonus_val" for attestazione usually.
+        # Let's check logic: main.py lines 612-614 use "attestazione_score".
+        # But config shows "bonus_val": 3.
+        # Lines 629: bonus = req.get("bonus_val")
+        # So usually it's sub_score + bonus.
+        
+        # 3. Bonus
+        bonus = float(req.get("bonus_val", 0.0))
+        
+        # 4. Custom Metrics
+        custom_max = 0.0
+        if "custom_metrics" in req:
+            for m in req["custom_metrics"]:
+                custom_max += float(m.get("max_score", 0.0))
+                
+        return sub_score_max + att_score + custom_max + bonus
+        
+    return 0.0
+
+def calculate_lot_max_raw_score(lot_cfg: schemas.LotConfig):
+    """
+    Calculate the total theoretical maximum raw score for the lot.
+    Sum of all requirement max points + company certs max points.
+    """
+    total = 0.0
+    
+    # 1. Company Certs
+    # Config is simple list of dicts.
+    if lot_cfg.company_certs:
+        for c in lot_cfg.company_certs:
+             # handle both dict and object access depending on how it's loaded
+             if isinstance(c, dict):
+                 total += c.get("points", 0.0)
+             else:
+                 total += getattr(c, "points", 0.0)
+                 
+    # 2. Requirements
+    for req in lot_cfg.reqs:
+        # Pydantic model dump or dict access
+        if not isinstance(req, dict):
+             req = req.dict()
+        total += calculate_max_points_for_req(req)
+        
+    return total
 
 @api_router.get("/config", response_model=Dict[str, schemas.LotConfig])
 def get_config(db: Session = Depends(get_db)):
@@ -597,13 +665,12 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
                     req["max_points"],
                     req.get("max_certs", 5),
                 )
-            elif req["type"] in ["reference", "project"] and (
-                req.get("sub_reqs") or req.get("criteria")
-            ):
+            elif req["type"] in ["reference", "project"]:
                 sub_score_sum = 0.0
-                criteria_list = req.get("criteria") or req.get("sub_reqs")
+                criteria_list = req.get("criteria") or req.get("sub_reqs") or []
+                
+                # 1. Standard Criteria/Sub-reqs
                 if inp.sub_req_vals:
-                    # Handle both dict and object formats
                     val_map = {}
                     for s in inp.sub_req_vals:
                         if isinstance(s, dict):
@@ -615,18 +682,51 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
                         weight = sub.get("weight", 1)
                         sub_score_sum += weight * float(val)
 
+                # 2. Attestazione Cliente
+                att_score = 0.0
+                if inp.attestazione_active:
+                    att_score = float(req.get("attestazione_score", 0.0))
+                
+                # 3. Custom Metrics
+                custom_score = 0.0
+                if inp.custom_metric_vals:
+                    metrics_config = req.get("custom_metrics") or []
+                    for metric in metrics_config:
+                        m_id = metric.get("id")
+                        m_val = float(inp.custom_metric_vals.get(m_id, 0.0))
+                        # Clamp to metric min/max just in case
+                        m_min = float(metric.get("min_score", 0.0))
+                        m_max = float(metric.get("max_score", 0.0))
+                        custom_score += max(m_min, min(m_max, m_val))
+
+                # 4. Bonus (legacy)
                 bonus = req.get("bonus_val", 0.0) if inp.bonus_active else 0.0
-                pts = min(sub_score_sum + bonus, req["max_points"])
+                
+                pts = min(sub_score_sum + att_score + custom_score + bonus, req["max_points"])
 
             raw_tech_score += pts
             details[inp.req_id] = pts
 
-    if lot_cfg.max_raw_score > 0:
-        tech_score = (raw_tech_score / lot_cfg.max_raw_score) * lot_cfg.max_tech_score
-    else:
-        tech_score = 0.0
+            details[inp.req_id] = pts
 
-    tech_score = min(tech_score, lot_cfg.max_tech_score)
+    # NEW WEIGHTED SCORING LOGIC
+    # Calculate weighted score for each requirement
+    weighted_scores = {}
+    tech_score = 0.0
+    
+    for req in lot_cfg.reqs:
+        raw_score_i = details.get(req["id"], 0.0)
+        max_raw_i = req.get("max_points", 1.0)
+        gara_weight_i = req.get("gara_weight", 0.0)
+        
+        # Formula: (raw_i / max_raw_i) × peso_gara_i
+        if max_raw_i > 0:
+            weighted_i = (raw_score_i / max_raw_i) * gara_weight_i
+        else:
+            weighted_i = 0.0
+            
+        weighted_scores[req["id"]] = round(weighted_i, 2)
+        tech_score += weighted_i
 
     result = {
         "technical_score": round(tech_score, 2),
@@ -634,7 +734,8 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
         "total_score": round(tech_score + econ_score, 2),
         "raw_technical_score": round(raw_tech_score, 2),
         "company_certs_score": round(company_certs_score, 2),
-        "details": details,
+        "details": details,  # RAW scores per requirement
+        "weighted_scores": weighted_scores,  # NEW: weighted scores per requirement
     }
 
     logger.info(

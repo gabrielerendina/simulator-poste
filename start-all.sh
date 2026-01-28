@@ -42,6 +42,9 @@ fi
 echo "📦 Checking dependencies..."
 echo ""
 
+# Ensure logs directory exists
+mkdir -p logs
+
 # Start backend in background
 echo "🔧 Starting Backend (http://localhost:8000)..."
 ./start-backend.sh > logs/backend.log 2>&1 &

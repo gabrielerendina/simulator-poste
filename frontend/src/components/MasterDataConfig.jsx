@@ -20,7 +20,14 @@ export default function MasterDataConfig({ onBack }) {
         const fetchData = async () => {
             try {
                 const res = await axios.get(`${API_URL}/master-data`);
-                setData(res.data);
+                // De-duplicate arrays on load to clean up any existing duplicates
+                const cleanedData = {
+                    ...res.data,
+                    company_certs: res.data.company_certs ? [...new Set(res.data.company_certs)] : [],
+                    prof_certs: res.data.prof_certs ? [...new Set(res.data.prof_certs)] : [],
+                    requirement_labels: res.data.requirement_labels ? [...new Set(res.data.requirement_labels)] : [],
+                };
+                setData(cleanedData);
             } catch (error) {
                 console.error("Error fetching master data:", error);
             } finally {
@@ -33,7 +40,15 @@ export default function MasterDataConfig({ onBack }) {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await axios.post(`${API_URL}/master-data`, data);
+            // De-duplicate arrays before saving
+            const cleanedData = {
+                ...data,
+                company_certs: [...new Set(data.company_certs)],
+                prof_certs: [...new Set(data.prof_certs)],
+                requirement_labels: data.requirement_labels ? [...new Set(data.requirement_labels)] : [],
+            };
+            await axios.post(`${API_URL}/master-data`, cleanedData);
+            setData(cleanedData); // Update local state with deduplicated version
             alert(t('master.save_success'));
         } catch (error) {
             console.error("Error saving master data:", error);
@@ -78,9 +93,8 @@ export default function MasterDataConfig({ onBack }) {
     if (loading) return <div className="p-10 text-center">{t('common.loading')}</div>;
 
     const sections = [
-        { id: 'company_certs', label: t('master.company_certs'), icon: ShieldCheck, color: 'text-purple-600', bg: 'bg-purple-50' },
+        { id: 'company_certs', label: t('master.company_certs'), icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
         { id: 'prof_certs', label: t('master.prof_certs'), icon: Award, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { id: 'requirement_labels', label: t('master.req_labels'), icon: Tag, color: 'text-green-600', bg: 'bg-green-50' },
         { id: 'economic_formulas', label: t('config.economic_formula'), icon: Info, color: 'text-orange-600', bg: 'bg-orange-50' },
     ];
 
@@ -147,7 +161,7 @@ export default function MasterDataConfig({ onBack }) {
                             <div className="space-y-3">
                                 {data[activeSection] && data[activeSection].length > 0 ? (
                                     data[activeSection].map((item, idx) => (
-                                        <div key={idx} className={`flex gap-3 items-center group p-3 rounded-lg border ${sections.find(s => s.id === activeSection)?.bg} ${sections.find(s => s.id === activeSection)?.bg.replace('bg-','border-')}`}>
+                                        <div key={idx} className={`flex gap-3 items-center group p-3 rounded-lg border ${sections.find(s => s.id === activeSection)?.bg} ${sections.find(s => s.id === activeSection)?.bg.replace('bg-', 'border-')}`}>
                                             <div className="flex-1">
                                                 {activeSection === 'economic_formulas' ? (
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

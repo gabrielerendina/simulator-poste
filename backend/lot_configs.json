@@ -4,7 +4,7 @@
         "base_amount": 16837200.0,
         "max_tech_score": 60.0,
         "max_econ_score": 40.0,
-        "max_raw_score": 158.0,
+        "max_raw_score": 284.0,
         "alpha": 0.3,
         "company_certs": [
             {
@@ -40,7 +40,10 @@
                 "type": "resource",
                 "prof_R": 2,
                 "prof_C": 2,
-                "max_points": 8
+                "max_res": 2,
+                "max_certs": 2,
+                "max_points": 8,
+                "gara_weight": 1.76
             },
             {
                 "id": "VAL_REQ_8",
@@ -48,7 +51,10 @@
                 "type": "resource",
                 "prof_R": 5,
                 "prof_C": 3,
-                "max_points": 21
+                "max_res": 10,
+                "max_certs": 10,
+                "max_points": 120,
+                "gara_weight": 26.47
             },
             {
                 "id": "VAL_REQ_9",
@@ -56,7 +62,10 @@
                 "type": "resource",
                 "prof_R": 3,
                 "prof_C": 2,
-                "max_points": 12
+                "max_res": 5,
+                "max_certs": 5,
+                "max_points": 35,
+                "gara_weight": 7.72
             },
             {
                 "id": "VAL_REQ_10",
@@ -64,7 +73,10 @@
                 "type": "resource",
                 "prof_R": 2,
                 "prof_C": 1,
-                "max_points": 6
+                "max_res": 2,
+                "max_certs": 2,
+                "max_points": 8,
+                "gara_weight": 1.76
             },
             {
                 "id": "VAL_REQ_11",
@@ -96,15 +108,16 @@
                     },
                     {
                         "id": "e",
-                        "label": "Produttivit\u00e0",
+                        "label": "Produttività",
                         "weight": 1
                     },
                     {
                         "id": "f",
-                        "label": "Modalit\u00e0 Operativa",
+                        "label": "Modalità Operativa",
                         "weight": 1
                     }
-                ]
+                ],
+                "gara_weight": 6.18
             },
             {
                 "id": "VAL_REQ_12",
@@ -166,14 +179,15 @@
                     },
                     {
                         "id": "k",
-                        "label": "Produttivit\u00e0",
+                        "label": "Produttività",
                         "weight": 1
                     }
-                ]
+                ],
+                "gara_weight": 12.79
             },
             {
                 "id": "VAL_REQ_13",
-                "label": "Organizzazione e Flessibilit\u00e0",
+                "label": "Organizzazione e Flessibilità",
                 "max_points": 15,
                 "type": "project",
                 "sub_reqs": [
@@ -192,7 +206,8 @@
                         "label": "Fine Fornitura",
                         "weight": 1
                     }
-                ]
+                ],
+                "gara_weight": 3.31
             }
         ],
         "state": {
@@ -354,7 +369,10 @@
                 "type": "resource",
                 "prof_R": 2,
                 "prof_C": 1,
-                "max_points": 6
+                "max_res": 3,
+                "max_certs": 3,
+                "max_points": 15,
+                "gara_weight": 9.68
             },
             {
                 "id": "VAL_REQ_21",
@@ -362,7 +380,10 @@
                 "type": "resource",
                 "prof_R": 2,
                 "prof_C": 1,
-                "max_points": 6
+                "max_res": 2,
+                "max_certs": 2,
+                "max_points": 8,
+                "gara_weight": 5.16
             },
             {
                 "id": "VAL_REQ_22",
@@ -370,7 +391,10 @@
                 "type": "resource",
                 "prof_R": 2,
                 "prof_C": 1,
-                "max_points": 6
+                "max_res": 2,
+                "max_certs": 2,
+                "max_points": 8,
+                "gara_weight": 5.16
             },
             {
                 "id": "VAL_REQ_23",
@@ -378,7 +402,10 @@
                 "type": "resource",
                 "prof_R": 1,
                 "prof_C": 1,
-                "max_points": 3
+                "max_res": 1,
+                "max_certs": -1,
+                "max_points": 1,
+                "gara_weight": 0.65
             },
             {
                 "id": "VAL_REQ_24",
@@ -403,7 +430,8 @@
                         "label": "Tipologia Ambienti",
                         "weight": 1
                     }
-                ]
+                ],
+                "gara_weight": 11.61
             },
             {
                 "id": "VAL_REQ_25",
@@ -433,7 +461,8 @@
                         "label": "Strumenti",
                         "weight": 1
                     }
-                ]
+                ],
+                "gara_weight": 14.84
             },
             {
                 "id": "VAL_REQ_26",
@@ -461,7 +490,8 @@
                         "label": "Fine Fornitura",
                         "weight": 1
                     }
-                ]
+                ],
+                "gara_weight": 12.9
             }
         ],
         "state": {
@@ -512,7 +542,8 @@
                 "type": "resource",
                 "prof_R": 2,
                 "prof_C": 1,
-                "max_points": 6
+                "max_points": 6,
+                "gara_weight": 7.2
             },
             {
                 "id": "VAL_REQ_34",
@@ -520,7 +551,8 @@
                 "type": "resource",
                 "prof_R": 2,
                 "prof_C": 1,
-                "max_points": 6
+                "max_points": 6,
+                "gara_weight": 7.2
             },
             {
                 "id": "VAL_REQ_35",
@@ -528,7 +560,8 @@
                 "type": "resource",
                 "prof_R": 2,
                 "prof_C": 1,
-                "max_points": 6
+                "max_points": 6,
+                "gara_weight": 7.2
             },
             {
                 "id": "VAL_REQ_36",
@@ -548,7 +581,8 @@
                         "label": "Organizzazione",
                         "weight": 0.5
                     }
-                ]
+                ],
+                "gara_weight": 20.4
             },
             {
                 "id": "VAL_REQ_37",
@@ -563,7 +597,7 @@
                     },
                     {
                         "id": "b",
-                        "label": "Governo e Qualit\u00e0",
+                        "label": "Governo e Qualità",
                         "weight": 1
                     },
                     {
@@ -571,7 +605,8 @@
                         "label": "Fine Fornitura",
                         "weight": 1
                     }
-                ]
+                ],
+                "gara_weight": 18.0
             }
         ],
         "state": {
