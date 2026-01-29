@@ -1,17 +1,30 @@
 import { useState } from 'react';
-import { Sliders, Settings, Check, Save } from 'lucide-react';
+import { Sliders, Settings, Check, Save, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency, formatNumber } from '../utils/formatters';
+import { useConfig } from '../features/config/context/ConfigContext';
+import { useSimulation } from '../features/simulation/context/SimulationContext';
 
 export default function Sidebar({
-    config, selectedLotKey, onSelectLot,
-    baseAmount,
-    competitorDiscount, setCompetitorDiscount,
-    myDiscount, setMyDiscount,
-    results,
-    onSaveState
+    onSaveState,
+    isOpen,
+    onClose
 }) {
     const { t } = useTranslation();
+
+    // Get data from contexts (no more prop drilling!)
+    const { config } = useConfig();
+    const {
+        selectedLot,
+        myDiscount,
+        competitorDiscount,
+        results,
+        setLot,
+        setDiscount
+    } = useSimulation();
+
+    // Derived values
+    const baseAmount = config && selectedLot && config[selectedLot] ? config[selectedLot].base_amount : 0;
     const p_best = baseAmount * (1 - competitorDiscount / 100);
     const p_my = baseAmount * (1 - myDiscount / 100);
     const isBest = p_my < p_best;
@@ -32,8 +45,16 @@ export default function Sidebar({
     return (
         <div className="w-80 bg-white border-r border-slate-200 flex flex-col h-full shadow-lg z-20">
             {/* Lutech Logo Banner */}
-            <div className="p-4 bg-gradient-to-br from-slate-50 to-white border-b border-slate-200 flex justify-center">
+            <div className="p-4 bg-gradient-to-br from-slate-50 to-white border-b border-slate-200 flex justify-between items-center">
                 <img src="/logo-lutech.png" alt="Lutech" className="h-10 object-contain" />
+                {/* Close button - mobile only */}
+                <button
+                    onClick={onClose}
+                    className="md:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    aria-label="Chiudi menu"
+                >
+                    <X className="w-5 h-5 text-slate-600" />
+                </button>
             </div>
 
             <div className="p-6 border-b border-slate-100 bg-slate-50">
@@ -44,15 +65,21 @@ export default function Sidebar({
 
                 <label className="block text-sm font-medium text-slate-700 mb-1">{t('sidebar.title')}</label>
                 <select
-                    value={selectedLotKey}
-                    onChange={(e) => onSelectLot(e.target.value)}
+                    value={selectedLot || ''}
+                    onChange={(e) => {
+                        setLot(e.target.value);
+                        // Close sidebar on mobile after selection
+                        if (window.innerWidth < 768 && onClose) onClose();
+                    }}
                     className="w-full p-2 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                 >
-                    {Object.keys(config).map(k => (
+                    {config && Object.keys(config).map(k => (
                         <option key={k} value={k}>{k}</option>
                     ))}
                 </select>
-                <p className="text-xs text-slate-500 mt-1">{config[selectedLotKey].name}</p>
+                {config && selectedLot && config[selectedLot] && (
+                    <p className="text-xs text-slate-500 mt-1">{config[selectedLot].name}</p>
+                )}
             </div>
 
             <div className="p-6 flex-1 overflow-y-auto space-y-8">
@@ -74,7 +101,7 @@ export default function Sidebar({
                                     type="number"
                                     step="0.1"
                                     value={competitorDiscount}
-                                    onChange={(e) => setCompetitorDiscount(Math.round(parseFloat(e.target.value) * 10) / 10 || 0)}
+                                    onChange={(e) => setDiscount('competitorDiscount', Math.round(parseFloat(e.target.value) * 10) / 10 || 0)}
                                     className="w-12 text-sm font-mono focus:outline-none text-right"
                                 />
                                 <span className="text-xs text-slate-400">%</span>
@@ -83,7 +110,7 @@ export default function Sidebar({
                         <input
                             type="range" min="0" max="100" step="0.1"
                             value={competitorDiscount}
-                            onChange={(e) => setCompetitorDiscount(parseFloat(e.target.value))}
+                            onChange={(e) => setDiscount('competitorDiscount', parseFloat(e.target.value))}
                             className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
                         />
                         <p className="text-xs text-slate-400 mt-1 text-right">{t('simulation.best_price')}: {formatCurrency(p_best)}</p>
@@ -97,7 +124,7 @@ export default function Sidebar({
                                     type="number"
                                     step="0.1"
                                     value={myDiscount}
-                                    onChange={(e) => setMyDiscount(Math.round(parseFloat(e.target.value) * 10) / 10 || 0)}
+                                    onChange={(e) => setDiscount('myDiscount', Math.round(parseFloat(e.target.value) * 10) / 10 || 0)}
                                     className="w-12 text-sm font-mono focus:outline-none text-right text-blue-600 font-bold"
                                 />
                                 <span className="text-xs text-slate-400">%</span>
@@ -106,7 +133,7 @@ export default function Sidebar({
                         <input
                             type="range" min="0" max="100" step="0.1"
                             value={myDiscount}
-                            onChange={(e) => setMyDiscount(parseFloat(e.target.value))}
+                            onChange={(e) => setDiscount('myDiscount', parseFloat(e.target.value))}
                             className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                         />
                         <p className="text-xs text-slate-500 mt-1 text-right">{t('simulation.your_price')}: {formatCurrency(p_my)}</p>

@@ -4,6 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis
 import { Target, Download, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { formatCurrency, formatNumber } from '../utils/formatters';
+import { SkeletonGauge, SkeletonCard } from '../shared/components/ui/Skeleton';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -160,7 +161,20 @@ export default function Dashboard({ results, simulationData, myDiscount, competi
         }
     };
 
-    if (!results) return null;
+    // Show loading skeleton when no results yet (AFTER all hooks!)
+    if (!results || !lotData) {
+        return (
+            <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <SkeletonGauge />
+                    <SkeletonGauge />
+                    <SkeletonGauge />
+                </div>
+                <SkeletonCard />
+                <SkeletonCard />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 sticky top-6">

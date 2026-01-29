@@ -31,6 +31,7 @@ import crud, models, schemas
 from database import SessionLocal, engine
 from logging_config import setup_logging, get_logger
 from auth import OIDCMiddleware, OIDCConfig, get_current_user
+from services.scoring_service import ScoringService
 
 # Setup structured logging
 setup_logging()
@@ -350,53 +351,13 @@ def metrics_endpoint():
 
 
 
-# --- LOGIC (Copied from original, can be refactored) ---
+# --- LOGIC - Using Service Layer ---
+# Note: Scoring logic moved to services/scoring_service.py
+# Legacy function wrappers for backward compatibility (can be removed after full migration)
 
-
-def calculate_economic_score(
-    p_base, p_offered, p_best_competitor, alpha=0.3, max_econ=40.0
-):
-    """
-    Calculate economic score based on offered price vs base and competitor.
-
-    Uses interpolation formula with alpha exponent for progressive discounting reward.
-
-    Args:
-        p_base: Base price
-        p_offered: Our offered price
-        p_best_competitor: Best competitor's price
-        alpha: Exponent factor (0-1)
-        max_econ: Maximum economic score
-
-    Returns:
-        Economic score (0 to max_econ)
-    """
-    # Price must be less than or equal to base
-    if p_offered > p_base:
-        return 0.0
-
-    # Get the best price between us and competitor
-    actual_best = min(p_offered, p_best_competitor)
-
-    # Calculate denominator (spread from base to best price)
-    denom = p_base - actual_best
-    if denom <= 0:
-        # Edge case: if actual_best >= p_base, return max score if we're within range
-        if actual_best == p_base:
-            return 0.0
-        return max_econ
-
-    # Calculate numerator (our discount)
-    num = p_base - p_offered
-
-    # Calculate ratio (0 to 1)
-    ratio = num / denom
-
-    # Clamp ratio to [0, 1]
-    ratio = max(0.0, min(1.0, ratio))
-
-    # Apply alpha exponent and scale to max
-    return max_econ * (ratio**alpha)
+def calculate_economic_score(p_base, p_offered, p_best_competitor, alpha=0.3, max_econ=40.0):
+    """Legacy wrapper - delegates to ScoringService"""
+    return ScoringService.calculate_economic_score(p_base, p_offered, p_best_competitor, alpha, max_econ)
 
 
 def calculate_prof_score(R, C, max_res, max_points, max_certs=5):
@@ -415,7 +376,7 @@ def calculate_prof_score(R, C, max_res, max_points, max_certs=5):
     """
     # Use user provided values directly without capping R or C based on defaults
     # Logic: (2 * R) + (R * C)
-    
+
     # However, we still respect the explicit max_points if provided in config (which we set to 1000 now)
     score = (2 * R) + (R * C)
 

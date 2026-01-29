@@ -37,6 +37,19 @@ export default function TechEvaluator({ lotData, inputs, setInputs, certs, setCe
         setCerts(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
+    // Guard clause - return early if no lotData
+    if (!lotData) {
+        return (
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <div className="animate-pulse">
+                    <div className="h-6 bg-slate-200 rounded w-3/4 mb-4"></div>
+                    <div className="h-4 bg-slate-200 rounded w-1/2 mb-2"></div>
+                    <div className="h-4 bg-slate-200 rounded w-5/6"></div>
+                </div>
+            </div>
+        );
+    }
+
     // Dynamic Category Totals
     const maxCompanyCerts = lotData.company_certs?.reduce((sum, c) => sum + (c.points || 0), 0) || 0;
     const maxProfCerts = lotData.reqs?.filter(r => r.type === 'resource').reduce((sum, r) => sum + (r.max_points || 0), 0) || 0;

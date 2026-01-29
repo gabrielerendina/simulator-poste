@@ -3,6 +3,7 @@ import { Plus, Trash2, Save, X, ChevronDown, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { isEqual } from '../utils/isEqual';
+import { useToast } from '../shared/components/ui/Toast';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -14,10 +15,9 @@ const JUDGMENT_LEVELS = [
     { value: 0, label: "Assente/Inadeguato" }
 ];
 
-import { isEqual } from '../utils/isEqual';
-
 export default function CriteriConfiguratePage({ lotKey, lotConfig, onBack, onSave }) {
     const { t } = useTranslation();
+    const { warning, error: showError } = useToast();
     const [expandedReqs, setExpandedReqs] = useState({});
     const [editingCriteria, setEditingCriteria] = useState({});
     const [localJudgments, setLocalJudgments] = useState({});
@@ -176,7 +176,7 @@ export default function CriteriConfiguratePage({ lotKey, lotConfig, onBack, onSa
 
     const handleSave = async () => {
         if (!validateCriteria()) {
-            alert(t('config.validation_error'));
+            warning(t('config.validation_error') || 'Errore di validazione: controlla i criteri');
             return;
         }
         setSaving(true);
@@ -229,7 +229,7 @@ export default function CriteriConfiguratePage({ lotKey, lotConfig, onBack, onSa
             }
         } catch (error) {
             console.error('Errore nel salvataggio:', error);
-            alert(t('config.save_error'));
+            showError(t('config.save_error') || 'Errore durante il salvataggio');
         } finally {
             setSaving(false);
         }

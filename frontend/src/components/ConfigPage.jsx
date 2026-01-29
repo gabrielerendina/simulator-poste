@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../utils/formatters';
 import { Save, Plus, Trash2, Settings2, Building2, Users, DollarSign, Briefcase, FileCheck, Award, Info, TrendingUp, Search, X } from 'lucide-react';
+import LotSelector from '../features/config/components/LotSelector';
+import CompanyCertsEditor from '../features/config/components/CompanyCertsEditor';
 
 export default function ConfigPage({ config, masterData, onSave, onAddLot, onDeleteLot, onBack }) {
     const { t } = useTranslation();
@@ -224,41 +226,13 @@ export default function ConfigPage({ config, masterData, onSave, onAddLot, onDel
 
                 {/* Gara/Lotto Selector & Metadata */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-                    <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-100">
-                        <div className="flex gap-2 overflow-x-auto">
-                            {Object.keys(editedConfig).map(lotKey => (
-                                <button
-                                    key={lotKey}
-                                    onClick={() => setSelectedLot(lotKey)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${selectedLot === lotKey
-                                        ? 'bg-slate-800 text-white shadow'
-                                        : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                                        }`}
-                                >
-                                    {lotKey}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => {
-                                    const name = prompt(t('config.prompt_new_lot'));
-                                    if (name) onAddLot(name);
-                                }}
-                                className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
-                                title={t('common.add', 'AGGIUNGI')}
-                            >
-                                <Plus className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={() => onDeleteLot(selectedLot)}
-                                className="p-2 text-slate-500 hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors"
-                                title={t('common.delete', 'ELIMINA')}
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
+                    <LotSelector
+                        config={editedConfig}
+                        selectedLot={selectedLot}
+                        onSelectLot={setSelectedLot}
+                        onAddLot={onAddLot}
+                        onDeleteLot={onDeleteLot}
+                    />
 
                     {/* Datalists for suggestions from Master Data */}
                     <datalist id="known-certs">
@@ -347,69 +321,14 @@ export default function ConfigPage({ config, masterData, onSave, onAddLot, onDel
                 </div>
 
                 {/* Company Certifications */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-                    <div className="flex items-center gap-2 mb-6">
-                        <Building2 className="w-5 h-5 text-purple-600" />
-                        <h2 className="text-lg font-semibold text-slate-800">{t('dashboard.company_certs')}</h2>
-                        <button
-                            onClick={addCompanyCert}
-                            className="ml-auto px-4 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors flex items-center gap-2 text-sm font-medium"
-                        >
-                            <Plus className="w-4 h-4" />
-                            {t('config.add_cert')}
-                        </button>
-                    </div>
-                    <div className="space-y-3">
-                        {currentLot.company_certs && currentLot.company_certs.length > 0 ? (
-                            currentLot.company_certs.map((cert, idx) => (
-                                <div key={idx} className="flex gap-4 items-center bg-purple-50 p-3 rounded-lg border border-purple-200 group">
-                                    <div className="flex-1">
-                                        <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wider">Certificazione</label>
-                                        <select
-                                            value={cert.label}
-                                            onChange={(e) => updateCompanyCert(idx, e.target.value)}
-                                            className="w-full p-2 border border-purple-200 bg-white rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm text-slate-800"
-                                        >
-                                            <option value="" disabled>{t('master.item_placeholder', 'Seleziona...')}</option>
-                                            {knownCerts.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-purple-600 uppercase mb-1 tracking-wider">Punti</label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.5"
-                                            value={cert.points}
-                                            onChange={(e) => updateCompanyCertPoints(idx, Math.max(0, parseFloat(e.target.value) || 0))}
-                                            className="w-24 p-2 border border-purple-200 bg-white rounded-lg focus:ring-2 focus:ring-purple-500 outline-none font-bold text-center text-purple-700 text-base"
-                                        />
-                                    </div>
-                                    <button
-                                        onClick={() => deleteCompanyCert(idx)}
-                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all opacity-0 group-hover:opacity-100 self-end mb-1"
-                                        title="Elimina"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-10 border-2 border-dashed border-purple-200 rounded-xl bg-purple-50/50">
-                                <div className="text-sm text-purple-700 font-medium">Nessuna certificazione aggiunta</div>
-                                <div className="text-xs text-purple-500 mt-1">Clicca su "Aggiungi Certificazione" per iniziare</div>
-                            </div>
-                        )}
-                    </div>
-                    <div className="mt-6 pt-4 border-t border-slate-200">
-                        <div className="flex justify-between items-center bg-purple-50 px-5 py-3 rounded-lg border border-purple-200">
-                            <div className="text-sm font-semibold text-purple-800">Totale Punti Cert.</div>
-                            <div className="text-right">
-                                <div className="text-3xl font-black text-purple-700">{(currentLot.company_certs?.reduce((sum, c) => sum + (c.points || 0), 0) || 0).toFixed(1)}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <CompanyCertsEditor
+                    companyCerts={currentLot.company_certs}
+                    knownCerts={knownCerts}
+                    onAdd={addCompanyCert}
+                    onUpdate={updateCompanyCert}
+                    onUpdatePoints={updateCompanyCertPoints}
+                    onDelete={deleteCompanyCert}
+                />
 
                 {/* Economic Formula */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
