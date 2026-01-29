@@ -72,6 +72,8 @@ class OIDCMiddleware:
         "/docs",
         "/openapi.json",
         "/redoc",
+        "/api/config",         # Frontend needs config before auth
+        "/api/master-data",    # Frontend needs master data before auth
     ]
 
     def __init__(self, app, config: Optional[OIDCConfig] = None):
