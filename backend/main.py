@@ -442,7 +442,7 @@ def calculate_lot_max_raw_score(lot_cfg: schemas.LotConfig):
     Sum of all requirement max points + company certs max points.
     """
     total = 0.0
-    
+
     # 1. Company Certs
     # Config is simple list of dicts.
     if lot_cfg.company_certs:
@@ -452,14 +452,40 @@ def calculate_lot_max_raw_score(lot_cfg: schemas.LotConfig):
                  total += c.get("points", 0.0)
              else:
                  total += getattr(c, "points", 0.0)
-                 
+
     # 2. Requirements
     for req in lot_cfg.reqs:
         # Pydantic model dump or dict access
         if not isinstance(req, dict):
              req = req.dict()
         total += calculate_max_points_for_req(req)
-        
+
+    return total
+
+
+def calculate_lot_max_tech_score(lot_cfg: schemas.LotConfig):
+    """
+    Calculate the total maximum weighted score (gara points) for the lot.
+    Sum of all gara_weight from requirements + company certs.
+    This represents the max_tech_score.
+    """
+    total = 0.0
+
+    # 1. Company Certs
+    if lot_cfg.company_certs:
+        for c in lot_cfg.company_certs:
+            if isinstance(c, dict):
+                total += c.get("gara_weight", 0.0)
+            else:
+                total += getattr(c, "gara_weight", 0.0)
+
+    # 2. Requirements
+    for req in lot_cfg.reqs:
+        if isinstance(req, dict):
+            total += req.get("gara_weight", 0.0)
+        else:
+            total += getattr(req, "gara_weight", 0.0)
+
     return total
 
 @api_router.get("/config", response_model=Dict[str, schemas.LotConfig])
@@ -600,18 +626,23 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
         data.base_amount, p_off, p_best, lot_cfg.alpha, lot_cfg.max_econ_score
     )
 
+    # === 1. CALCULATE RAW SCORES ===
+
+    # Company Certifications (raw score)
     raw_tech_score = 0.0
-    company_certs_score = 0.0
+    company_certs_raw_score = 0.0
     cert_config = lot_cfg.company_certs
     cert_pts_map = {c["label"]: c["points"] for c in cert_config if isinstance(c, dict)}
+    cert_weight_map = {c["label"]: c.get("gara_weight", 0.0) for c in cert_config if isinstance(c, dict)}
 
     for selected_label in data.selected_company_certs:
-        company_certs_score += cert_pts_map.get(selected_label, 0.0)
+        company_certs_raw_score += cert_pts_map.get(selected_label, 0.0)
 
-    raw_tech_score += company_certs_score
+    raw_tech_score += company_certs_raw_score
 
+    # Requirements (raw scores)
     req_map = {r["id"]: r for r in lot_cfg.reqs}
-    details = {}
+    details = {}  # Raw scores per requirement
 
     for inp in data.tech_inputs:
         if inp.req_id in req_map:
@@ -629,7 +660,7 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
             elif req["type"] in ["reference", "project"]:
                 sub_score_sum = 0.0
                 criteria_list = req.get("criteria") or req.get("sub_reqs") or []
-                
+
                 # 1. Standard Criteria/Sub-reqs
                 if inp.sub_req_vals:
                     val_map = {}
@@ -647,7 +678,7 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
                 att_score = 0.0
                 if inp.attestazione_active:
                     att_score = float(req.get("attestazione_score", 0.0))
-                
+
                 # 3. Custom Metrics
                 custom_score = 0.0
                 if inp.custom_metric_vals:
@@ -662,41 +693,85 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
 
                 # 4. Bonus (legacy)
                 bonus = req.get("bonus_val", 0.0) if inp.bonus_active else 0.0
-                
+
                 pts = min(sub_score_sum + att_score + custom_score + bonus, req["max_points"])
 
             raw_tech_score += pts
             details[inp.req_id] = pts
 
-            details[inp.req_id] = pts
+    # === 2. CALCULATE WEIGHTED SCORES (WITH FORMULA) ===
 
-    # NEW WEIGHTED SCORING LOGIC
-    # Calculate weighted score for each requirement
+    # Company Certifications - Weighted Score
+    # Calculate max possible raw for company certs
+    company_certs_max_raw = sum(c.get("points", 0.0) for c in cert_config if isinstance(c, dict))
+    company_certs_gara_weight = sum(c.get("gara_weight", 0.0) for c in cert_config if isinstance(c, dict))
+
+    if company_certs_max_raw > 0:
+        company_certs_weighted = (company_certs_raw_score / company_certs_max_raw) * company_certs_gara_weight
+    else:
+        company_certs_weighted = 0.0
+
+    # Requirements - Weighted Scores + Category Sums
     weighted_scores = {}
-    tech_score = 0.0
-    
+
+    # Category sums (weighted)
+    category_company_certs = round(company_certs_weighted, 2)
+    category_resource = 0.0  # Certificazioni Professionali
+    category_reference = 0.0  # Referenze Aziendali
+    category_project = 0.0  # Progetto Tecnico
+
     for req in lot_cfg.reqs:
         raw_score_i = details.get(req["id"], 0.0)
         max_raw_i = req.get("max_points", 1.0)
         gara_weight_i = req.get("gara_weight", 0.0)
-        
+        req_type = req.get("type", "")
+
         # Formula: (raw_i / max_raw_i) × peso_gara_i
         if max_raw_i > 0:
             weighted_i = (raw_score_i / max_raw_i) * gara_weight_i
         else:
             weighted_i = 0.0
-            
+
         weighted_scores[req["id"]] = round(weighted_i, 2)
-        tech_score += weighted_i
+
+        # Add to category sum
+        if req_type == "resource":
+            category_resource += weighted_i
+        elif req_type == "reference":
+            category_reference += weighted_i
+        elif req_type == "project":
+            category_project += weighted_i
+
+    # Round category sums
+    category_resource = round(category_resource, 2)
+    category_reference = round(category_reference, 2)
+    category_project = round(category_project, 2)
+
+    # Total technical score = sum of all categories
+    tech_score = category_company_certs + category_resource + category_reference + category_project
+
+    # === 3. AUTO-CALCULATE MAX SCORES ===
+    calculated_max_tech_score = calculate_lot_max_tech_score(lot_cfg)
+    calculated_max_raw_score = calculate_lot_max_raw_score(lot_cfg)
+    calculated_max_econ_score = 100.0 - calculated_max_tech_score
 
     result = {
         "technical_score": round(tech_score, 2),
         "economic_score": round(econ_score, 2),
         "total_score": round(tech_score + econ_score, 2),
         "raw_technical_score": round(raw_tech_score, 2),
-        "company_certs_score": round(company_certs_score, 2),
+        "company_certs_score": round(company_certs_raw_score, 2),  # Raw score
         "details": details,  # RAW scores per requirement
-        "weighted_scores": weighted_scores,  # NEW: weighted scores per requirement
+        "weighted_scores": weighted_scores,  # Weighted scores per requirement
+        # NEW: Category sums (weighted)
+        "category_company_certs": category_company_certs,
+        "category_resource": category_resource,
+        "category_reference": category_reference,
+        "category_project": category_project,
+        # NEW: Auto-calculated max scores
+        "calculated_max_tech_score": round(calculated_max_tech_score, 2),
+        "calculated_max_raw_score": round(calculated_max_raw_score, 2),
+        "calculated_max_econ_score": round(calculated_max_econ_score, 2),
     }
 
     logger.info(

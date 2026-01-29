@@ -9,7 +9,8 @@ from typing import List, Dict, Any, Optional
 class CompanyCert(BaseModel):
     """Company certification with points value"""
     label: str
-    points: float
+    points: float  # max_points (raw score max)
+    gara_weight: float = 0.0  # weight for weighted score calculation
 
 
 class SubReq(BaseModel):
@@ -24,7 +25,8 @@ class Requirement(BaseModel):
     id: str
     label: str
     type: str  # "resource", "reference", "project"
-    max_points: float
+    max_points: float  # max raw score for this requirement
+    gara_weight: float = 0.0  # weight for weighted score calculation (gara points)
     prof_R: Optional[int] = None
     prof_C: Optional[int] = None
     max_res: Optional[int] = None
