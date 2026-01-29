@@ -206,7 +206,7 @@ export default function TechEvaluator() {
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-bold">
                                                         <Info className="w-3 h-3 mr-1 text-blue-400" />
-                                                        {t('tech.formula')}: 2R + RC
+                                                        {t('tech.formula')}: (2 × R) + (R × C)
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-purple-600 font-semibold mb-1">
@@ -263,8 +263,13 @@ export default function TechEvaluator() {
                                                                 counts[cert] = newVal;
 
                                                                 const newTotalC = req.selected_prof_certs.reduce((s, c) => s + (counts[c] || 0), 0);
-                                                                updateInput(req.id, 'cert_counts', counts);
-                                                                updateInput(req.id, 'c_val', newTotalC);
+                                                                // Single update to avoid race condition
+                                                                const currentInput = inputs[req.id] || {};
+                                                                setTechInput(req.id, {
+                                                                    ...currentInput,
+                                                                    cert_counts: counts,
+                                                                    c_val: newTotalC
+                                                                });
                                                             };
 
                                                             return (
@@ -286,8 +291,13 @@ export default function TechEvaluator() {
                                                                                 const counts = { ...(cur.cert_counts || {}) };
                                                                                 counts[cert] = Math.max(0, val);
                                                                                 const newTotalC = req.selected_prof_certs.reduce((s, c) => s + (counts[c] || 0), 0);
-                                                                                updateInput(req.id, 'cert_counts', counts);
-                                                                                updateInput(req.id, 'c_val', newTotalC);
+                                                                                // Single update to avoid race condition
+                                                                                const currentInput = inputs[req.id] || {};
+                                                                                setTechInput(req.id, {
+                                                                                    ...currentInput,
+                                                                                    cert_counts: counts,
+                                                                                    c_val: newTotalC
+                                                                                });
                                                                             }}
                                                                             className="w-10 text-center bg-white border border-slate-200 rounded text-xs font-bold py-1 focus:ring-1 focus:ring-indigo-500 outline-none"
                                                                         />
@@ -330,7 +340,7 @@ export default function TechEvaluator() {
                                                         <Info className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
                                                         <p className="text-[9px] text-amber-700 leading-tight">
                                                             <b>Attenzione:</b> Il numero totale di certificazioni (C={cur.c_val}) è superiore al numero di risorse (R={cur.r_val}).
-                                                            Assicurati che sia corretto per la formula 2R + RC.
+                                                            Assicurati che sia corretto per la formula (2 × R) + (R × C).
                                                         </p>
                                                     </div>
                                                 )}
@@ -375,13 +385,32 @@ export default function TechEvaluator() {
                                 { value: 5, label: "Ottimo", color: "bg-green-100 border-green-300 text-green-800" }
                             ];
 
+                            // Calculate raw score for this requirement
+                            const reqRawScore = (() => {
+                                const subSum = cur.sub_req_vals?.reduce((subSum, sv) =>
+                                    subSum + (sv.val || 0) * ((req.sub_reqs || req.criteria)?.find(s => s.sub_id === sv.sub_id || s.id === sv.sub_id)?.weight || 1), 0) || 0;
+                                const attSum = cur.attestazione_active ? (req.attestazione_score || 0) : 0;
+                                const customSum = Object.entries(cur.custom_metric_vals || {}).reduce((cSum, [mId, mVal]) =>
+                                    cSum + (parseFloat(mVal) || 0), 0);
+                                const bonusSum = cur.bonus_active ? (req.bonus_val || 0) : 0;
+                                return Math.min(subSum + attSum + customSum + bonusSum, req.max_points);
+                            })();
+
+                            const reqWeightedScore = results?.weighted_scores?.[req.id] || 0;
+
                             return (
                                 <div key={req.id} className="p-6 hover:bg-slate-50 transition-colors">
                                     <div className="flex justify-between mb-4">
-                                        <h4 className="font-medium text-slate-900 flex items-center gap-2">
-                                            <Star className="w-4 h-4 text-orange-400 fill-orange-400" />
-                                            {req.label}
-                                        </h4>
+                                        <div>
+                                            <h4 className="font-medium text-slate-900 flex items-center gap-2">
+                                                <Star className="w-4 h-4 text-orange-400 fill-orange-400" />
+                                                {req.label}
+                                            </h4>
+                                            <div className="flex gap-3 mt-1">
+                                                <span className="text-[10px] font-bold text-slate-500">Raw: <span className="text-slate-700">{formatNumber(reqRawScore, 2)} / {formatNumber(req.max_points, 2)}</span></span>
+                                                <span className="text-[10px] font-bold text-amber-600">Pesato: <span className="text-amber-700">{formatNumber(reqWeightedScore, 2)} / {formatNumber(req.gara_weight || 0, 2)}</span></span>
+                                            </div>
+                                        </div>
                                         <div className="text-right">
                                             <span className="text-lg font-bold text-blue-600">{formatNumber(pts, 2)}</span>
                                             <span className="text-xs text-slate-400"> / {formatNumber(req.max_points, 2)}</span>

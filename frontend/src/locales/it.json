@@ -154,11 +154,11 @@
     },
     "simulation": {
         "title": "Parametri Simulazione",
-        "my_discount": "Mio Sconto (%)",
+        "my_discount": "Sconto Lutech (%)",
         "competitor_discount": "Best Offer (%)",
         "competitor_avg": "Media Market Attesa",
         "best_price": "Miglior Prezzo",
-        "your_price": "Tuo Prezzo",
+        "your_price": "Prezzo",
         "base_value": "Valore"
     },
     "tech": {

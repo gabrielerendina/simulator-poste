@@ -129,6 +129,14 @@ class ExportPDFRequest(BaseModel):
     competitor_discount: float
     avg_total_score: float = 0.0
     details: Dict[str, float] = Field(default_factory=dict)
+    weighted_scores: Dict[str, float] = Field(default_factory=dict)  # Weighted scores per requirement
+    category_company_certs: float = 0.0
+    category_resource: float = 0.0
+    category_reference: float = 0.0
+    category_project: float = 0.0
+    max_tech_score: float = 60.0
+    max_econ_score: float = 40.0
+    max_raw_score: float = 0.0
 
 
 class MasterData(BaseModel):

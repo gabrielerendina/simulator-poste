@@ -102,6 +102,7 @@ export default function Dashboard() {
         try {
             const res = await axios.post(`${API_URL}/export-pdf`, {
                 lot_key: lotKey,
+                base_amount: lotData.base_amount,
                 technical_score: results.technical_score,
                 economic_score: results.economic_score,
                 total_score: results.total_score,
@@ -110,6 +111,14 @@ export default function Dashboard() {
                 win_probability: monteCarlo?.win_probability || 0,
                 avg_total_score: monteCarlo?.avg_total_score || 0,
                 details: results.details,
+                weighted_scores: results.weighted_scores || {},
+                category_company_certs: results.category_company_certs || 0,
+                category_resource: results.category_resource || 0,
+                category_reference: results.category_reference || 0,
+                category_project: results.category_project || 0,
+                max_tech_score: lotData.max_tech_score || 60,
+                max_econ_score: lotData.max_econ_score || 40,
+                max_raw_score: lotData.max_raw_score || 0,
                 monte_carlo_data: monteCarlo // Pass Monte Carlo data for PDF
             }, { responseType: 'blob' });
 
@@ -272,7 +281,7 @@ export default function Dashboard() {
                                 </div>
 
                                 {/* Scenarios Grid */}
-                                <div className="text-[10px] text-slate-600 uppercase font-bold mb-2">Scenari Ottimali di Sconto</div>
+                                <div className="text-[10px] text-slate-600 uppercase font-bold mb-2">Scenari Sconto</div>
                                 <div className="grid grid-cols-2 gap-3">
                                     {optimizerResults.scenarios?.map((scenario) => {
                                         const colorClasses = {

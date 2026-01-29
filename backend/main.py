@@ -1055,12 +1055,12 @@ def export_pdf(data: schemas.ExportPDFRequest, db: Session = Depends(get_db)):
     story.append(Paragraph(summary_text, styles["Normal"]))
     story.append(Spacer(1, 12))
 
-    # Score Table
+    # Score Table - Using dynamic max scores
     table_data = [
         ["Componente", "Punteggio"],
-        ["Punteggio Tecnico", f"{data.technical_score} / 60.00"],
-        ["Punteggio Economico", f"{data.economic_score} / 40.00"],
-        ["TOTALE", f"{data.total_score} / 100.00"],
+        ["Punteggio Tecnico", f"{data.technical_score:.2f} / {data.max_tech_score:.2f}"],
+        ["Punteggio Economico", f"{data.economic_score:.2f} / {data.max_econ_score:.2f}"],
+        ["TOTALE", f"{data.total_score:.2f} / 100.00"],
     ]
     t = Table(table_data, colWidths=[200, 150])
     t.setStyle(
@@ -1077,6 +1077,34 @@ def export_pdf(data: schemas.ExportPDFRequest, db: Session = Depends(get_db)):
         )
     )
     story.append(t)
+    story.append(Spacer(1, 20))
+
+    # Weighted Category Scores Table
+    story.append(Paragraph("Punteggi Pesati per Categoria", styles["Heading2"]))
+    category_data = [
+        ["Categoria", "Punteggio Pesato"],
+        ["Certificazioni Aziendali", f"{data.category_company_certs:.2f}"],
+        ["Certificazioni Professionali", f"{data.category_resource:.2f}"],
+        ["Referenze", f"{data.category_reference:.2f}"],
+        ["Progetti Tecnici", f"{data.category_project:.2f}"],
+        ["TOTALE TECNICO", f"{data.technical_score:.2f}"],
+    ]
+    t_categories = Table(category_data, colWidths=[200, 150])
+    t_categories.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7c3aed")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                ("BACKGROUND", (0, 5), (-1, 5), colors.HexColor("#e9d5ff")),
+                ("FONTNAME", (0, 5), (-1, 5), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        )
+    )
+    story.append(t_categories)
     story.append(Spacer(1, 20))
 
     # Score Distribution Chart with REAL Monte Carlo data
