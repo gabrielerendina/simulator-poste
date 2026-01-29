@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
  * @param {Function} props.onAdd - Callback to add new certification
  * @param {Function} props.onUpdate - Callback to update certification label
  * @param {Function} props.onUpdatePoints - Callback to update certification points
+ * @param {Function} props.onUpdateGaraWeight - Callback to update certification gara weight
  * @param {Function} props.onDelete - Callback to delete certification
  */
 export default function CompanyCertsEditor({
@@ -18,11 +19,13 @@ export default function CompanyCertsEditor({
   onAdd,
   onUpdate,
   onUpdatePoints,
+  onUpdateGaraWeight,
   onDelete
 }) {
   const { t } = useTranslation();
 
   const totalPoints = companyCerts?.reduce((sum, c) => sum + (c.points || 0), 0) || 0;
+  const totalGaraWeight = companyCerts?.reduce((sum, c) => sum + (c.gara_weight || 0), 0) || 0;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
@@ -70,6 +73,20 @@ export default function CompanyCertsEditor({
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-amber-600 uppercase mb-1 tracking-wider">
+                  Peso Gara
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={cert.gara_weight || 0}
+                  onChange={(e) => onUpdateGaraWeight && onUpdateGaraWeight(idx, Math.max(0, parseFloat(e.target.value) || 0))}
+                  className="w-24 p-2 border border-amber-200 bg-white rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-bold text-center text-amber-700 text-base"
+                />
+              </div>
+
               <button
                 onClick={() => onDelete(idx)}
                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all opacity-0 group-hover:opacity-100 self-end mb-1"
@@ -88,10 +105,14 @@ export default function CompanyCertsEditor({
       </div>
 
       <div className="mt-6 pt-4 border-t border-slate-200">
-        <div className="flex justify-between items-center bg-purple-50 px-5 py-3 rounded-lg border border-purple-200">
-          <div className="text-sm font-semibold text-purple-800">Totale Punti Cert.</div>
-          <div className="text-right">
-            <div className="text-3xl font-black text-purple-700">{totalPoints.toFixed(1)}</div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex justify-between items-center bg-purple-50 px-5 py-3 rounded-lg border border-purple-200">
+            <div className="text-sm font-semibold text-purple-800">Totale Raw</div>
+            <div className="text-2xl font-black text-purple-700">{totalPoints.toFixed(1)}</div>
+          </div>
+          <div className="flex justify-between items-center bg-amber-50 px-5 py-3 rounded-lg border border-amber-200">
+            <div className="text-sm font-semibold text-amber-800">Totale Pesato</div>
+            <div className="text-2xl font-black text-amber-700">{totalGaraWeight.toFixed(1)}</div>
           </div>
         </div>
       </div>

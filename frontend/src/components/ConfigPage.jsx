@@ -31,6 +31,37 @@ export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
     const knownLabels = masterData?.requirement_labels || [];
     const knownProfCerts = masterData?.prof_certs || [];
 
+    // Auto-calculate max scores
+    const calculateMaxTechScore = () => {
+        let total = 0;
+        // Sum gara_weight from company_certs
+        if (currentLot.company_certs) {
+            total += currentLot.company_certs.reduce((sum, c) => sum + (c.gara_weight || 0), 0);
+        }
+        // Sum gara_weight from requirements
+        if (currentLot.reqs) {
+            total += currentLot.reqs.reduce((sum, r) => sum + (r.gara_weight || 0), 0);
+        }
+        return total;
+    };
+
+    const calculateMaxRawScore = () => {
+        let total = 0;
+        // Sum points from company_certs
+        if (currentLot.company_certs) {
+            total += currentLot.company_certs.reduce((sum, c) => sum + (c.points || 0), 0);
+        }
+        // Sum max_points from requirements
+        if (currentLot.reqs) {
+            total += currentLot.reqs.reduce((sum, r) => sum + (r.max_points || 0), 0);
+        }
+        return total;
+    };
+
+    const calculated_max_tech_score = calculateMaxTechScore();
+    const calculated_max_raw_score = calculateMaxRawScore();
+    const calculated_max_econ_score = 100 - calculated_max_tech_score;
+
     useEffect(() => {
         if (currentLot.base_amount) {
             setDisplayBase(formatNumber(currentLot.base_amount, 2));
@@ -191,6 +222,10 @@ export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
         currentLot.company_certs[idx].points = pts;
         setEditedConfig({ ...editedConfig });
     };
+    const updateCompanyCertGaraWeight = (idx, weight) => {
+        currentLot.company_certs[idx].gara_weight = weight;
+        setEditedConfig({ ...editedConfig });
+    };
     const deleteCompanyCert = (idx) => {
         currentLot.company_certs.splice(idx, 1);
         setEditedConfig({ ...editedConfig });
@@ -278,30 +313,38 @@ export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('config.max_tech_score')}</label>
-                            <input
-                                type="number"
-                                min="0"
-                                value={currentLot.max_tech_score || 60}
-                                onChange={(e) => {
-                                    currentLot.max_tech_score = Math.max(0, parseFloat(e.target.value) || 0);
-                                    setEditedConfig({ ...editedConfig });
-                                }}
-                                className="w-full p-2 border border-slate-200 bg-slate-50 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                            />
+                            <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1">
+                                {t('config.max_tech_score')}
+                                <div className="group relative">
+                                    <Info className="w-3.5 h-3.5 text-slate-400 cursor-help" />
+                                    <div
+                                        className="absolute right-0 bottom-full mb-2 w-64 p-3 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 font-normal normal-case"
+                                    >
+                                        Auto-calcolato dalla somma dei pesi gara (gara_weight) di certificazioni aziendali e requisiti
+                                    </div>
+                                </div>
+                            </label>
+                            <div className="w-full p-2 bg-amber-50 border border-amber-300 rounded-lg font-mono text-sm">
+                                <span className="text-amber-700 font-bold text-lg">{calculated_max_tech_score.toFixed(1)}</span>
+                                <span className="text-xs text-amber-600 ml-2">(auto-calcolato)</span>
+                            </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('config.max_econ_score')}</label>
-                            <input
-                                type="number"
-                                min="0"
-                                value={currentLot.max_econ_score || 40}
-                                onChange={(e) => {
-                                    currentLot.max_econ_score = Math.max(0, parseFloat(e.target.value) || 0);
-                                    setEditedConfig({ ...editedConfig });
-                                }}
-                                className="w-full p-2 border border-slate-200 bg-slate-50 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                            />
+                            <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1">
+                                {t('config.max_econ_score')}
+                                <div className="group relative">
+                                    <Info className="w-3.5 h-3.5 text-slate-400 cursor-help" />
+                                    <div
+                                        className="absolute right-0 bottom-full mb-2 w-64 p-3 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 font-normal normal-case"
+                                    >
+                                        Auto-calcolato come 100 - max_tech_score
+                                    </div>
+                                </div>
+                            </label>
+                            <div className="w-full p-2 bg-amber-50 border border-amber-300 rounded-lg font-mono text-sm">
+                                <span className="text-amber-700 font-bold text-lg">{calculated_max_econ_score.toFixed(1)}</span>
+                                <span className="text-xs text-amber-600 ml-2">(auto-calcolato)</span>
+                            </div>
                         </div>
                         <div>
                             <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1">
@@ -311,12 +354,13 @@ export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
                                     <div
                                         className="absolute right-0 bottom-full mb-2 w-64 p-3 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 font-normal normal-case"
                                     >
-                                        {t('config.max_raw_tooltip')}
+                                        {t('config.max_raw_tooltip')} - Auto-calcolato dalla somma dei punti (points, max_points)
                                     </div>
                                 </div>
                             </label>
-                            <div className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-600 font-mono text-sm">
-                                {currentLot.max_raw_score || 0}
+                            <div className="w-full p-2 bg-purple-50 border border-purple-300 rounded-lg font-mono text-sm">
+                                <span className="text-purple-700 font-bold text-lg">{calculated_max_raw_score.toFixed(1)}</span>
+                                <span className="text-xs text-purple-600 ml-2">(auto-calcolato)</span>
                             </div>
                         </div>
                     </div>
@@ -329,6 +373,7 @@ export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
                     onAdd={addCompanyCert}
                     onUpdate={updateCompanyCert}
                     onUpdatePoints={updateCompanyCertPoints}
+                    onUpdateGaraWeight={updateCompanyCertGaraWeight}
                     onDelete={deleteCompanyCert}
                 />
 
@@ -357,20 +402,13 @@ export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
                                 />
                             </div>
 
-                            {/* Max Economic Score */}
+                            {/* Max Economic Score - Auto-calculated */}
                             <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                                <label className="block text-xs font-bold text-amber-700 uppercase mb-2 tracking-wider">Punteggio Massimo</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    value={currentLot.max_econ_score || 40}
-                                    onChange={(e) => {
-                                        currentLot.max_econ_score = Math.max(0, parseFloat(e.target.value) || 0);
-                                        setEditedConfig({ ...editedConfig });
-                                    }}
-                                    className="w-full p-2 border border-amber-300 bg-white rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-bold text-lg text-amber-700"
-                                />
+                                <label className="block text-xs font-bold text-amber-700 uppercase mb-2 tracking-wider">Punteggio Massimo Pesato</label>
+                                <div className="w-full p-2 bg-amber-100 border border-amber-300 rounded-lg font-bold text-lg text-amber-700">
+                                    {calculated_max_econ_score.toFixed(1)}
+                                    <span className="text-xs font-normal text-amber-600 ml-2">(100 - {calculated_max_tech_score.toFixed(1)})</span>
+                                </div>
                             </div>
 
                             {/* Formula Selection */}
@@ -458,7 +496,7 @@ export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
                         </button>
                     </div>
 
-                    <div className="mb-4">
+                    <div className="flex items-center justify-between mb-4">
                         <button
                             onClick={() => addRequirement(activeTab)}
                             className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors flex items-center gap-2 text-sm font-medium"
@@ -466,6 +504,16 @@ export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
                             <Plus className="w-4 h-4" />
                             {t('common.add')} {activeTab === 'resource' ? t('config.new_certification') : activeTab === 'reference' ? t('config.new_reference') : t('config.new_project')}
                         </button>
+                        <div className="flex gap-3">
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-1.5 text-center">
+                                <div className="text-[9px] font-bold text-purple-500 uppercase">Raw</div>
+                                <div className="text-sm font-black text-purple-700">{filteredReqs.reduce((s, r) => s + (r.max_points || 0), 0).toFixed(1)}</div>
+                            </div>
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center">
+                                <div className="text-[9px] font-bold text-amber-500 uppercase">Pesato</div>
+                                <div className="text-sm font-black text-amber-700">{filteredReqs.reduce((s, r) => s + (r.gara_weight || 0), 0).toFixed(1)}</div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="space-y-4">
@@ -499,6 +547,26 @@ export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
+                                    </div>
+
+                                    {/* Gara Weight Field - Common to all requirement types */}
+                                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mb-3">
+                                        <label className="block text-xs font-semibold text-amber-800 mb-1">
+                                            Peso Gara (gara_weight)
+                                        </label>
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.5"
+                                                value={req.gara_weight || 0}
+                                                onChange={(e) => updateRequirement(req.id, 'gara_weight', parseFloat(e.target.value) || 0)}
+                                                className="w-32 p-2 border border-amber-300 bg-white rounded text-sm font-bold text-center focus:ring-2 focus:ring-amber-500 outline-none"
+                                            />
+                                            <span className="text-xs text-amber-700 italic">
+                                                Peso del requisito nel punteggio tecnico complessivo
+                                            </span>
+                                        </div>
                                     </div>
 
                                     {/* Professional Certification Configuration */}

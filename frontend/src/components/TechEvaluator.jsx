@@ -127,15 +127,11 @@ export default function TechEvaluator() {
                     <div className="flex items-center gap-3">
                         <div>
                             <h3 className="font-semibold text-slate-800">{t('dashboard.company_certs')}</h3>
-                            <div className="text-[10px] text-slate-500 mt-1">
-                                <span>Raw: {formatNumber(rawCompanyCerts, 2)}</span>
-                                <span className="mx-2">•</span>
-                                <span>Weighted: {formatNumber(results?.company_certs_score || 0, 2)}</span>
+                            <div className="flex gap-3 mt-1">
+                                <span className="text-[10px] font-bold text-slate-500">Raw: <span className="text-slate-700">{formatNumber(rawCompanyCerts, 2)} / {formatNumber(maxCompanyCerts, 2)}</span></span>
+                                <span className="text-[10px] font-bold text-amber-600">Pesato: <span className="text-amber-700">{formatNumber(results?.category_company_certs || 0, 2)}</span></span>
                             </div>
                         </div>
-                        <span className="text-sm font-bold text-blue-600">
-                            {formatNumber(results?.company_certs_score || 0, 2)} / {formatNumber(maxCompanyCerts, 2)} pt
-                        </span>
                     </div>
                     {expandedSections.companyCerts ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
                 </button>
@@ -176,15 +172,11 @@ export default function TechEvaluator() {
                     <div className="flex items-center gap-3">
                         <div>
                             <h3 className="font-semibold text-slate-800">{t('tech.prof_certs')}</h3>
-                            <div className="text-[10px] text-slate-500 mt-1">
-                                <span>Raw: {formatNumber(rawProfCerts, 2)}</span>
-                                <span className="mx-2">•</span>
-                                <span>Weighted: {formatNumber(weightedProfCerts, 2)}</span>
+                            <div className="flex gap-3 mt-1">
+                                <span className="text-[10px] font-bold text-slate-500">Raw: <span className="text-slate-700">{formatNumber(rawProfCerts, 2)} / {formatNumber(maxProfCerts, 2)}</span></span>
+                                <span className="text-[10px] font-bold text-amber-600">Pesato: <span className="text-amber-700">{formatNumber(results?.category_resource || 0, 2)}</span></span>
                             </div>
                         </div>
-                        <span className="text-sm font-bold text-indigo-600">
-                            {formatNumber(weightedProfCerts, 2)} / {formatNumber(maxProfCerts, 2)} pt
-                        </span>
                     </div>
                     {expandedSections.profCerts ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
                 </button>
@@ -361,18 +353,11 @@ export default function TechEvaluator() {
                     <div className="flex items-center gap-3">
                         <div>
                             <h3 className="font-semibold text-slate-800 text-left">{t('tech.project_refs')}</h3>
-                            {expandedSections.projectRefs && (
-                                <p className="text-xs text-slate-500 mt-1 text-left">Giudizio Discrezionale: Assente=0, Parziale=2, Adeguato=3, Più che adeguato=4, Ottimo=5</p>
-                            )}
-                            <div className="text-[10px] text-slate-500 mt-1">
-                                <span>Raw: {formatNumber(rawProjectRefs, 2)}</span>
-                                <span className="mx-2">•</span>
-                                <span>Weighted: {formatNumber(weightedProjectRefs, 2)}</span>
+                            <div className="flex gap-3 mt-1">
+                                <span className="text-[10px] font-bold text-slate-500">Raw: <span className="text-slate-700">{formatNumber(rawProjectRefs, 2)} / {formatNumber(maxProjectRefs, 2)}</span></span>
+                                <span className="text-[10px] font-bold text-amber-600">Pesato: <span className="text-amber-700">{formatNumber(results?.category_reference !== undefined && results?.category_project !== undefined ? (results.category_reference + results.category_project) : weightedProjectRefs, 2)}</span></span>
                             </div>
                         </div>
-                        <span className="text-sm font-bold text-purple-600">
-                            {formatNumber(weightedProjectRefs, 2)} / {formatNumber(maxProjectRefs, 2)} pt
-                        </span>
                     </div>
                     {expandedSections.projectRefs ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
                 </button>

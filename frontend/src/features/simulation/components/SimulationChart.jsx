@@ -106,14 +106,7 @@ export default function SimulationChart({ simulationData, monteCarlo, results, m
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-4 flex flex-col gap-1 items-center">
-        <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-          {t('dashboard.chart_description')}
-        </p>
-        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">
-          Safe Zone: {t('dashboard.win_prob')} {">"} 90%
-        </p>
-      </div>
+      {/* Legend removed per user request */}
     </div>
   );
 }

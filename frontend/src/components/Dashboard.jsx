@@ -370,8 +370,10 @@ export default function Dashboard() {
                         <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-100">
                             <tr>
                                 <th scope="col" className="px-6 py-3">{t('dashboard.requirement')}</th>
-                                <th scope="col" className="px-6 py-3 text-right">{t('dashboard.points')}</th>
-                                <th scope="col" className="px-6 py-3 text-right">{t('dashboard.max')}</th>
+                                <th scope="col" className="px-6 py-3 text-right">Raw</th>
+                                <th scope="col" className="px-6 py-3 text-right">Max Raw</th>
+                                <th scope="col" className="px-6 py-3 text-right text-amber-700">Pesato</th>
+                                <th scope="col" className="px-6 py-3 text-right text-amber-700">Peso Gara</th>
                                 <th scope="col" className="px-6 py-3 text-center">{t('dashboard.status')}</th>
                             </tr>
                         </thead>
@@ -384,6 +386,8 @@ export default function Dashboard() {
                                 </td>
                                 <td className="px-6 py-4 text-right font-bold text-blue-600">{formatNumber(results.company_certs_score || 0, 2)}</td>
                                 <td className="px-6 py-4 text-right text-slate-500">{formatNumber(lotData.company_certs?.reduce((sum, c) => sum + (c.points || 0), 0) || 0, 1)}</td>
+                                <td className="px-6 py-4 text-right font-bold text-amber-600">{formatNumber(results.category_company_certs || 0, 2)}</td>
+                                <td className="px-6 py-4 text-right text-amber-500">{formatNumber(lotData.company_certs?.reduce((sum, c) => sum + (c.gara_weight || 0), 0) || 0, 1)}</td>
                                 <td className="px-6 py-4 text-center">
                                     {((results.company_certs_score || 0) >= (lotData.company_certs?.reduce((sum, c) => sum + (c.points || 0), 0) || 0.001) && (results.company_certs_score || 0) > 0) ?
                                         <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded border border-green-200">MAX</span> :
@@ -395,6 +399,7 @@ export default function Dashboard() {
                             {/* Requirements */}
                             {lotData && lotData.reqs.map(req => {
                                 const score = results.details[req.id] || 0;
+                                const weightedScore = results.weighted_scores?.[req.id] || 0;
                                 const isMax = score >= req.max_points;
                                 return (
                                     <tr key={req.id} className="bg-white border-b border-slate-100 hover:bg-slate-50">
@@ -404,6 +409,8 @@ export default function Dashboard() {
                                         </td>
                                         <td className="px-6 py-4 text-right font-bold text-blue-600">{formatNumber(score, 2)}</td>
                                         <td className="px-6 py-4 text-right text-slate-500">{formatNumber(req.max_points, 2)}</td>
+                                        <td className="px-6 py-4 text-right font-bold text-amber-600">{formatNumber(weightedScore, 2)}</td>
+                                        <td className="px-6 py-4 text-right text-amber-500">{formatNumber(req.gara_weight || 0, 1)}</td>
                                         <td className="px-6 py-4 text-center">
                                             {isMax ?
                                                 <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded border border-green-200">MAX</span>

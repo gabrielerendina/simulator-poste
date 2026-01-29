@@ -51,6 +51,34 @@ export default function ScoreGauges({ results, lotData, onExport, exportLoading 
           label={t('dashboard.total')}
         />
       </div>
+
+      {/* Weighted Category Scores */}
+      {(results.category_company_certs !== undefined ||
+        results.category_resource !== undefined ||
+        results.category_reference !== undefined ||
+        results.category_project !== undefined) && (
+        <div className="mt-6 pt-6 border-t border-slate-200">
+          <h4 className="font-semibold text-slate-700 mb-4 text-sm">Punteggi Pesati per Categoria</h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+              <div className="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-1">Cert. Aziendali</div>
+              <div className="text-2xl font-black text-purple-700">{(results.category_company_certs || 0).toFixed(2)}</div>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Cert. Professionali</div>
+              <div className="text-2xl font-black text-blue-700">{(results.category_resource || 0).toFixed(2)}</div>
+            </div>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+              <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Referenze</div>
+              <div className="text-2xl font-black text-emerald-700">{(results.category_reference || 0).toFixed(2)}</div>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+              <div className="text-[10px] font-bold text-orange-600 uppercase tracking-wider mb-1">Progetto Tecnico</div>
+              <div className="text-2xl font-black text-orange-700">{(results.category_project || 0).toFixed(2)}</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
