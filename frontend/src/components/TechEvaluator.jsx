@@ -529,8 +529,11 @@ export default function TechEvaluator() {
                                             </div>
                                         )}
 
-                                        {/* 4. Legacy Bonus Flag - Hide if it contains Attestazione Cliente as requested */}
-                                        {req.bonus_label && !req.bonus_label.includes("Attestazione Cliente") && (
+                                        {/* 4. Legacy Bonus Flag - Hide if it contains Attestazione/Att./Volumi (migrated to attestazione_score/custom_metrics) */}
+                                        {req.bonus_label &&
+                                         !req.bonus_label.includes("Attestazione Cliente") &&
+                                         !req.bonus_label.includes("Att.") &&
+                                         !req.bonus_label.includes("Volumi") && (
                                             <label className="flex items-center gap-3 cursor-pointer group pt-2 border-t border-slate-100">
                                                 <input
                                                     type="checkbox"

@@ -63,7 +63,7 @@
         "min": "MIN",
         "avg": "AVG",
         "max_label": "MAX",
-        "threshold_win": "Soglia Vittoria",
+        "threshold_win": "Competitor",
         "chart_description": "Il grafico proietta il tuo punteggio al variare dello sconto, calcolato sulla base dei tuoi requisiti tecnici attuali."
     },
     "tech_evaluator": {

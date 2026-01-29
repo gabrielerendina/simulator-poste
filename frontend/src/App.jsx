@@ -306,6 +306,12 @@ function AppContent() {
               if (!window.confirm(t('app.delete_confirm', { name: lotKey }))) return;
               try {
                 await axios.delete(`${API_URL}/config/${encodeURIComponent(lotKey)}`);
+
+                // Reset selected lot to trigger auto-select after refetch
+                if (selectedLot === lotKey) {
+                  setLot(null);
+                }
+
                 await refetchConfig();
                 // Refresh will trigger auto-select of first available lot
                 setView('dashboard');

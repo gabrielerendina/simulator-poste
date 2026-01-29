@@ -122,7 +122,7 @@ export default function SimulationChart({ simulationData, monteCarlo, results, m
 
       <div className={`w-full ${isFullscreen ? 'flex-1' : ''}`} style={{ height: isFullscreen ? chartHeight : '400px' }}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 40 }}>
+          <AreaChart data={chartData} margin={{ top: 20, right: 80, left: 10, bottom: 40 }}>
             <defs>
               <linearGradient id="colorEconomic" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
