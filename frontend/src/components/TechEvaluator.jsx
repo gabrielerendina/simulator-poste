@@ -136,7 +136,7 @@ export default function TechEvaluator() {
                     {expandedSections.companyCerts ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
                 </button>
                 {expandedSections.companyCerts && (
-                    <div className="p-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-3">
                         {lotData.company_certs && lotData.company_certs.length > 0 ? (
                             lotData.company_certs.map((cert) => (
                                 <button
@@ -148,7 +148,7 @@ export default function TechEvaluator() {
                                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${certs[cert.label] ? 'bg-blue-500 border-blue-500' : 'bg-white border-slate-300'}`}>
                                         {certs[cert.label] && <Check className="w-3 h-3 text-white" />}
                                     </div>
-                                    <span className="text-sm font-semibold truncate flex-1">{cert.label}</span>
+                                    <span className="text-sm font-semibold flex-1">{cert.label}</span>
                                     <span className={`text-xs font-bold ${certs[cert.label] ? 'text-blue-600' : 'text-slate-400'}`}>
                                         +{cert.points}
                                     </span>

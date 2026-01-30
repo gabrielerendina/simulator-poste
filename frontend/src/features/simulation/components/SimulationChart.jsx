@@ -1,33 +1,44 @@
 import { useState, useRef } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Brush, Legend } from 'recharts';
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis, Cell, ReferenceLine } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { Maximize2, Minimize2 } from 'lucide-react';
 
 /**
- * SimulationChart - Display economic score simulation with current position and safe zone
+ * SimulationChart - Display 4 key points: Competitor vs LUTECH, Economic vs Total
  *
  * @param {Object} props
  * @param {Array} props.simulationData - Simulation data points
  * @param {Object} props.monteCarlo - Monte Carlo analysis results
  * @param {Object} props.results - Current calculation results
  * @param {number} props.myDiscount - Current discount percentage
+ * @param {number} props.competitorDiscount - Competitor discount percentage
  */
-export default function SimulationChart({ simulationData, monteCarlo, results, myDiscount }) {
+export default function SimulationChart({ simulationData, monteCarlo, results, myDiscount, competitorDiscount }) {
   const { t } = useTranslation();
   const chartRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showEconomic, setShowEconomic] = useState(true);
-  const [showTotal, setShowTotal] = useState(true);
 
-  if (!simulationData || simulationData.length === 0) {
+  if (!simulationData || simulationData.length === 0 || !results) {
     return null;
   }
 
-  // Calculate total score line (economic + current technical weighted)
-  const chartData = simulationData.map(point => ({
-    ...point,
-    total_score: (point.economic_score || 0) + (results?.technical_score || 0)
-  }));
+  // Calculate competitor economic score from simulation data
+  const competitorPoint = simulationData.find(p => Math.abs(p.discount - competitorDiscount) < 0.1);
+  const competitorEconScore = competitorPoint?.economic_score || 0;
+
+  // Calculate competitor total score (economic + estimated technical)
+  const competitorTotalScore = monteCarlo?.competitor_threshold || competitorEconScore;
+
+  // Prepare 4 scatter points
+  const scatterData = [
+    // Competitor points (black)
+    { discount: competitorDiscount, score: competitorEconScore, label: 'Competitor Econ.', color: '#000000', type: 'competitor' },
+    { discount: competitorDiscount, score: competitorTotalScore, label: 'Competitor Tot.', color: '#000000', type: 'competitor' },
+
+    // LUTECH points (red)
+    { discount: myDiscount, score: results.economic_score, label: 'LUTECH Econ.', color: '#ef4444', type: 'lutech' },
+    { discount: myDiscount, score: results.total_score, label: 'LUTECH TOT.', color: '#ef4444', type: 'lutech' }
+  ];
 
   const toggleFullscreen = () => {
     const element = chartRef.current;
@@ -81,28 +92,10 @@ export default function SimulationChart({ simulationData, monteCarlo, results, m
       <div className="flex items-center justify-between mb-6">
         <h3 className="font-semibold text-slate-800">{t('dashboard.bid_to_win')}</h3>
         <div className="flex gap-4 items-center">
-          {/* Line toggles */}
-          <div className="flex gap-3 border-r pr-4 border-slate-200">
-            <button
-              onClick={() => setShowEconomic(!showEconomic)}
-              className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all ${showEconomic ? 'bg-green-50 border border-green-200' : 'bg-slate-50 border border-slate-200 opacity-50'}`}
-            >
-              <div className="w-3 h-3 bg-green-500 rounded"></div>
-              <span className="text-[10px] text-slate-700 font-bold uppercase tracking-tight">Economico</span>
-            </button>
-            <button
-              onClick={() => setShowTotal(!showTotal)}
-              className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all ${showTotal ? 'bg-blue-50 border border-blue-200' : 'bg-slate-50 border border-slate-200 opacity-50'}`}
-            >
-              <div className="w-3 h-3 bg-blue-500 rounded"></div>
-              <span className="text-[10px] text-slate-700 font-bold uppercase tracking-tight">Totale</span>
-            </button>
-          </div>
-
           {/* Legend items */}
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 bg-blue-100 border border-blue-200 rounded"></div>
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Safe Zone</span>
+            <div className="w-3 h-3 bg-black rounded-full"></div>
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Competitor</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 bg-red-400 rounded-full"></div>
@@ -122,22 +115,13 @@ export default function SimulationChart({ simulationData, monteCarlo, results, m
 
       <div className={`w-full ${isFullscreen ? 'flex-1' : ''}`} style={{ height: isFullscreen ? chartHeight : '400px' }}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 20, right: 80, left: 10, bottom: 40 }}>
-            <defs>
-              <linearGradient id="colorEconomic" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-
+          <ScatterChart margin={{ top: 20, right: 100, left: 10, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
 
             <XAxis
+              type="number"
               dataKey="discount"
+              domain={[0, Math.max(myDiscount, competitorDiscount) + 10]}
               tick={{ fontSize: 11, fill: '#475569' }}
               label={{
                 value: 'Sconto (%)',
@@ -152,10 +136,12 @@ export default function SimulationChart({ simulationData, monteCarlo, results, m
             />
 
             <YAxis
+              type="number"
+              dataKey="score"
               domain={[0, 100]}
               tick={{ fontSize: 11, fill: '#475569' }}
               label={{
-                value: 'Punteggio Economico',
+                value: 'Punteggio',
                 angle: -90,
                 position: 'insideLeft',
                 fontSize: 12,
@@ -167,102 +153,48 @@ export default function SimulationChart({ simulationData, monteCarlo, results, m
               axisLine={{ stroke: '#cbd5e1' }}
             />
 
+            <ZAxis range={[400, 400]} />
+
             <Tooltip
-              formatter={(value, name) => {
-                if (name === 'economic_score') return [`${value.toFixed(2)} Punti`, 'Economico'];
-                if (name === 'total_score') return [`${value.toFixed(2)} Punti`, 'Totale (Econ. + Tecn.)'];
-                return [value, name];
+              cursor={{ strokeDasharray: '3 3' }}
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload;
+                  return (
+                    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3">
+                      <p className="text-xs font-bold text-slate-800 mb-1">{data.label}</p>
+                      <p className="text-xs text-slate-600">Sconto: {data.discount.toFixed(2)}%</p>
+                      <p className="text-xs text-slate-600">Punteggio: {data.score.toFixed(2)}</p>
+                    </div>
+                  );
+                }
+                return null;
               }}
-              labelFormatter={(label) => `Sconto: ${label}%`}
-              contentStyle={{
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                fontSize: '11px',
-                backgroundColor: 'white'
-              }}
             />
 
-            {/* Brush for zoom functionality */}
-            <Brush
-              dataKey="discount"
-              height={30}
-              stroke="#3b82f6"
-              fill="#eff6ff"
-              travellerWidth={10}
-            />
-
-            {/* Optimal Discount Zone Shading */}
-            {monteCarlo?.optimal_discount && (
-              <ReferenceLine
-                segment={[{ x: monteCarlo.optimal_discount, y: 0 }, { x: 70, y: 0 }]}
-                stroke="transparent"
-              />
-            )}
-
-            {/* Economic score line (green) */}
-            {showEconomic && (
-              <Area
-                type="monotone"
-                dataKey="economic_score"
-                stroke="#10b981"
-                strokeWidth={3}
-                fillOpacity={1}
-                fill="url(#colorEconomic)"
-                name="Economico"
-              />
-            )}
-
-            {/* Total score line (blue) */}
-            {showTotal && (
-              <Area
-                type="monotone"
-                dataKey="total_score"
-                stroke="#3b82f6"
-                strokeWidth={3}
-                fillOpacity={1}
-                fill="url(#colorTotal)"
-                name="Totale (Econ. + Tecn.)"
-              />
-            )}
-
-            {/* Current Economic Position Line */}
-            <ReferenceLine
-              y={results?.economic_score || 0}
-              stroke="#ef4444"
-              strokeWidth={2}
-              strokeDasharray="3 3"
-              label={{ position: 'right', value: 'LUTECH Econ.', fill: '#ef4444', fontSize: 10, fontWeight: 'bold' }}
-            />
-
-            {/* Competitor Threshold Line */}
-            <ReferenceLine
-              y={monteCarlo?.competitor_threshold || 95}
-              stroke="#f97316"
-              strokeDasharray="4 4"
-              label={{ position: 'right', value: t('dashboard.threshold_win'), fill: '#f97316', fontSize: 10, fontWeight: 'bold' }}
-            />
-
-            {/* Safe Zone Marker */}
+            {/* Safe Zone Reference Line */}
             {monteCarlo?.optimal_discount && (
               <ReferenceLine
                 x={monteCarlo.optimal_discount}
                 stroke="#10b981"
                 strokeWidth={1}
+                strokeDasharray="3 3"
                 label={{ position: 'top', value: 'Safe Zone', fill: '#10b981', fontSize: 9, fontWeight: 'bold' }}
               />
             )}
 
-            {/* Marker for Current Position */}
-            <ReferenceLine
-              x={myDiscount}
-              stroke="#ef4444"
-              strokeWidth={2}
-              label={{ position: 'top', value: 'LUTECH', fill: '#ef4444', fontSize: 11, fontWeight: 'bold' }}
-            />
-          </AreaChart>
+            <Scatter name="Points" data={scatterData} fill="#8884d8">
+              {scatterData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Scatter>
+          </ScatterChart>
         </ResponsiveContainer>
       </div>
+
+      <p className="text-xs text-slate-500 mt-4 text-center">
+        {t('dashboard.chart_description')}
+      </p>
     </div>
   );
 }

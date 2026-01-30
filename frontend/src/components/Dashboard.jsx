@@ -356,6 +356,7 @@ export default function Dashboard() {
                 monteCarlo={monteCarlo}
                 results={results}
                 myDiscount={myDiscount}
+                competitorDiscount={competitorDiscount}
             />
 
 
