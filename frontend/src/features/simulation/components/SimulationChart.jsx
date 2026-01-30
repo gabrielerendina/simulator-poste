@@ -247,27 +247,31 @@ export default function SimulationChart({ simulationData, monteCarlo, results, m
               label={{ value: 'Comp Tot', position: 'top', fontSize: 10, fill: '#000000' }}
             />
 
-            {/* 3. LUTECH Economic Point (red) */}
-            <ReferenceDot
-              x={myDiscount}
-              y={results?.economic_score || 0}
-              r={8}
-              fill="#ef4444"
-              stroke="#ffffff"
-              strokeWidth={2}
-              label={{ value: 'LUTECH Econ', position: 'top', fontSize: 10, fill: '#ef4444' }}
-            />
+            {/* 3. LUTECH Economic Point (red) - More visible */}
+            {results?.economic_score !== undefined && (
+              <ReferenceDot
+                x={myDiscount || 0}
+                y={results.economic_score}
+                r={10}
+                fill="#dc2626"
+                stroke="#ffffff"
+                strokeWidth={3}
+                label={{ value: 'LUTECH Econ', position: 'topRight', fontSize: 11, fill: '#dc2626', fontWeight: 'bold' }}
+              />
+            )}
 
-            {/* 4. LUTECH Total Point (red) */}
-            <ReferenceDot
-              x={myDiscount}
-              y={results?.total_score || 0}
-              r={8}
-              fill="#ef4444"
-              stroke="#ffffff"
-              strokeWidth={2}
-              label={{ value: 'LUTECH TOT', position: 'top', fontSize: 10, fill: '#ef4444' }}
-            />
+            {/* 4. LUTECH Total Point (red) - More visible */}
+            {results?.total_score !== undefined && (
+              <ReferenceDot
+                x={myDiscount || 0}
+                y={results.total_score}
+                r={10}
+                fill="#dc2626"
+                stroke="#ffffff"
+                strokeWidth={3}
+                label={{ value: 'LUTECH TOT', position: 'topRight', fontSize: 11, fill: '#dc2626', fontWeight: 'bold' }}
+              />
+            )}
 
             {/* Safe Zone Marker */}
             {monteCarlo?.optimal_discount && (
@@ -282,10 +286,6 @@ export default function SimulationChart({ simulationData, monteCarlo, results, m
           </AreaChart>
         </ResponsiveContainer>
       </div>
-
-      <p className="text-xs text-slate-500 mt-4 text-center">
-        {t('dashboard.chart_description')}
-      </p>
     </div>
   );
 }

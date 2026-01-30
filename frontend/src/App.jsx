@@ -6,7 +6,7 @@ import TechEvaluator from './components/TechEvaluator';
 import Dashboard from './components/Dashboard';
 import ConfigPage from './components/ConfigPage';
 import MasterDataConfig from './components/MasterDataConfig';
-import { Settings, Menu, X } from 'lucide-react';
+import { Settings, Menu, X, Save } from 'lucide-react';
 import { formatCurrency, formatNumber } from './utils/formatters';
 import { logger } from './utils/logger';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -135,6 +135,21 @@ function AppContent() {
     } catch (err) {
       logger.error("Failed to save state", err, { component: "App", lot: selectedLot });
       return false;
+    }
+  };
+
+  // Unified save function for top bar button
+  const handleUnifiedSave = async () => {
+    try {
+      const saveSuccess = await handleSaveState();
+      if (saveSuccess) {
+        success(t('app.save_success') || 'Dati salvati con successo');
+      } else {
+        showError(t('app.save_error') || 'Errore durante il salvataggio');
+      }
+    } catch (err) {
+      logger.error("Unified save failed", err, { component: "App" });
+      showError(t('app.save_error') || 'Errore durante il salvataggio');
     }
   };
 
@@ -270,6 +285,14 @@ function AppContent() {
               >
                 <Settings className="w-4 h-4" />
                 <span className="hidden md:inline">{t('common.master_data')}</span>
+              </button>
+              <button
+                onClick={handleUnifiedSave}
+                className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl transition-all font-medium text-sm bg-green-500 text-white hover:bg-green-600 shadow-sm"
+                aria-label="Salva"
+              >
+                <Save className="w-4 h-4" />
+                <span className="hidden md:inline">Salva</span>
               </button>
               <LogoutButton />
             </div>
