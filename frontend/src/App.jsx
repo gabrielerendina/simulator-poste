@@ -219,7 +219,6 @@ function AppContent() {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <Sidebar
-          onSaveState={handleSaveState}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -301,19 +300,6 @@ function AppContent() {
 
         {view === 'config' ? (
           <ConfigPage
-            onSave={async (newCfg) => {
-              try {
-                const result = await updateConfig(newCfg);
-                if (result.success) {
-                  success(t('config.save_success') || 'Configurazione salvata con successo');
-                } else {
-                  showError(t('config.save_error') || 'Errore durante il salvataggio');
-                }
-              } catch (err) {
-                logger.error("Failed to save configuration", err, { component: "ConfigPage" });
-                showError(t('config.save_error') || 'Errore durante il salvataggio');
-              }
-            }}
             onAddLot={async (lotName) => {
               try {
                 await axios.post(`${API_URL}/config/add?lot_key=${encodeURIComponent(lotName)}`);
@@ -344,10 +330,9 @@ function AppContent() {
                 showError(t('app.delete_error') || 'Errore durante l\'eliminazione del lotto');
               }
             }}
-            onBack={() => setView('dashboard')}
           />
         ) : view === 'master' ? (
-          <MasterDataConfig onBack={() => setView('dashboard')} />
+          <MasterDataConfig />
         ) : (
           <div className="flex-1 overflow-auto p-3 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
             <div className="lg:col-span-7 space-y-4 md:space-y-6">

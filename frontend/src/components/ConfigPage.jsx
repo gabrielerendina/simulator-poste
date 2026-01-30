@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../utils/formatters';
-import { Save, Plus, Trash2, Settings2, Building2, Users, DollarSign, Briefcase, FileCheck, Award, Info, TrendingUp, Search, X } from 'lucide-react';
+import { Plus, Trash2, Settings2, Building2, Users, DollarSign, Briefcase, FileCheck, Award, Info, TrendingUp, Search, X } from 'lucide-react';
 import LotSelector from '../features/config/components/LotSelector';
 import CompanyCertsEditor from '../features/config/components/CompanyCertsEditor';
 import { useConfig } from '../features/config/context/ConfigContext';
 
-export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
+export default function ConfigPage({ onAddLot, onDeleteLot }) {
     const { t } = useTranslation();
     const { config, masterData } = useConfig();
     const [editedConfig, setEditedConfig] = useState(JSON.parse(JSON.stringify(config)));
@@ -243,21 +243,6 @@ export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">{t('config.title')}</h1>
                         <p className="text-slate-500">{t('config.subtitle')}</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={onBack}
-                            className="px-6 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
-                        >
-                            {t('common.cancel')}
-                        </button>
-                        <button
-                            onClick={() => onSave(editedConfig)}
-                            className="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-900 transition-colors flex items-center gap-2 shadow-sm text-sm font-medium"
-                        >
-                            <Save className="w-4 h-4" />
-                            {t('config.save_all')}
-                        </button>
                     </div>
                 </div>
 

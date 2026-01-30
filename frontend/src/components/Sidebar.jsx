@@ -1,12 +1,10 @@
-import { useState } from 'react';
-import { Sliders, Settings, Check, Save, X } from 'lucide-react';
+import { Sliders, Settings, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency, formatNumber } from '../utils/formatters';
 import { useConfig } from '../features/config/context/ConfigContext';
 import { useSimulation } from '../features/simulation/context/SimulationContext';
 
 export default function Sidebar({
-    onSaveState,
     isOpen,
     onClose
 }) {
@@ -28,19 +26,6 @@ export default function Sidebar({
     const p_best = baseAmount * (1 - competitorDiscount / 100);
     const p_my = baseAmount * (1 - myDiscount / 100);
     const isBest = p_my < p_best;
-
-    const [saveStatus, setSaveStatus] = useState('idle'); // idle, saving, success
-
-    const handleManualSave = async () => {
-        setSaveStatus('saving');
-        const success = await onSaveState?.();
-        if (success) {
-            setSaveStatus('success');
-            setTimeout(() => setSaveStatus('idle'), 2000);
-        } else {
-            setSaveStatus('idle');
-        }
-    };
 
     return (
         <div className="w-80 bg-white border-r border-slate-200 flex flex-col h-full shadow-lg z-20">
@@ -160,32 +145,6 @@ export default function Sidebar({
                         </div>
                     </div>
                 )}
-
-                <div className="mt-auto pt-6">
-                    {/* Save Button for Simulation State */}
-                    <button
-                        onClick={handleManualSave}
-                        disabled={saveStatus === 'saving'}
-                        className={`w-full py-3 px-4 rounded-xl transition-all shadow-md font-medium flex items-center justify-center gap-2 ${saveStatus === 'success'
-                            ? 'bg-green-600 text-white'
-                            : 'bg-slate-900 hover:bg-slate-800 text-white'
-                            }`}
-                    >
-                        {saveStatus === 'success' ? (
-                            <>
-                                <Check className="w-4 h-4" />
-                                {t('common.save_success')}
-                            </>
-                        ) : saveStatus === 'saving' ? (
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <>
-                                <Save className="w-4 h-4 text-slate-400" />
-                                {t('common.save_config')}
-                            </>
-                        )}
-                    </button>
-                </div>
             </div>
         </div>
     );

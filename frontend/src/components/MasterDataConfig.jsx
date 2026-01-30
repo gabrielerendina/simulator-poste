@@ -6,7 +6,7 @@ import { useToast } from '../shared/components/ui/Toast';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-export default function MasterDataConfig({ onBack }) {
+export default function MasterDataConfig() {
     const { t } = useTranslation();
     const { success, error: showError } = useToast();
     const [data, setData] = useState({
@@ -108,22 +108,6 @@ export default function MasterDataConfig({ onBack }) {
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">{t('master.title')}</h1>
                         <p className="text-slate-500">{t('master.subtitle')}</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={onBack}
-                            className="px-6 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
-                        >
-                            {t('common.back')}
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-900 transition-colors flex items-center gap-2 shadow-sm text-sm font-medium disabled:opacity-50"
-                        >
-                            <Save className="w-4 h-4" />
-                            {saving ? t('common.loading') : t('common.save')}
-                        </button>
                     </div>
                 </div>
 
