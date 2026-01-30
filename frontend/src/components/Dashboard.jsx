@@ -201,8 +201,17 @@ export default function Dashboard() {
                             </div>
                             <div>
                                 <label className="text-xs font-semibold text-slate-600 mb-2 block">
-                                    Sconto Economico Competitor
+                                    Valore Offerta Competitor
                                 </label>
+                                {/* Display calculated offer value in euros */}
+                                <div className="mb-2">
+                                    <span className="text-xl font-bold text-black">
+                                        {formatCurrency(lotData?.base_amount * (1 - competitorEconDiscount / 100) || 0)}
+                                    </span>
+                                    <span className="text-xs text-slate-500 ml-2">
+                                        (Sconto: {formatNumber(competitorEconDiscount, 2)}%)
+                                    </span>
+                                </div>
                                 <div className="flex items-center gap-3">
                                     <input
                                         type="range"
@@ -277,6 +286,35 @@ export default function Dashboard() {
                                                 </span>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Discount Impact Calculator */}
+                                <div className="mt-4 mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                                    <div className="text-xs font-bold text-purple-900 mb-3 uppercase tracking-wide">📊 Calcolatore Impatto Sconto</div>
+                                    <div className="grid grid-cols-3 gap-3 text-center">
+                                        <div>
+                                            <div className="text-[10px] text-slate-600 mb-1">Sconto Attuale</div>
+                                            <div className="text-lg font-bold text-slate-900">{formatNumber(myDiscount, 1)}%</div>
+                                            <div className="text-xs text-slate-600">{formatNumber(results?.economic_score || 0, 2)} pt</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] text-slate-600 mb-1">Best Offer</div>
+                                            <div className="text-lg font-bold text-orange-600">{formatNumber(competitorDiscount, 1)}%</div>
+                                            <div className="text-xs text-slate-600">
+                                                {formatNumber(simulationData?.find(p => Math.abs(p.discount - competitorDiscount) < 0.1)?.economic_score || 0, 2)} pt
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] text-slate-600 mb-1">Diff Punti Econ.</div>
+                                            <div className={`text-lg font-bold ${(results?.economic_score || 0) - (simulationData?.find(p => Math.abs(p.discount - competitorDiscount) < 0.1)?.economic_score || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                {formatNumber((results?.economic_score || 0) - (simulationData?.find(p => Math.abs(p.discount - competitorDiscount) < 0.1)?.economic_score || 0), 2)}
+                                            </div>
+                                            <div className="text-[10px] text-slate-500">vs competitor</div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 text-[10px] text-purple-700 text-center">
+                                        💡 Ogni +1% sconto ≈ {formatNumber(((simulationData?.find(p => p.discount === myDiscount + 1)?.economic_score || 0) - (results?.economic_score || 0)), 2)} punti economici
                                     </div>
                                 </div>
 

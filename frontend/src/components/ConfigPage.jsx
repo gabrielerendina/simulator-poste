@@ -297,20 +297,26 @@ export default function ConfigPage({ onSave, onAddLot, onDeleteLot, onBack }) {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">{t('config.base_amount')}</label>
-                            <input
-                                type="text"
-                                value={displayBase}
-                                onChange={(e) => {
-                                    const raw = e.target.value.replace(/\./g, '').replace(',', '.');
-                                    setDisplayBase(e.target.value);
-                                    if (!isNaN(parseFloat(raw))) {
-                                        currentLot.base_amount = parseFloat(raw);
-                                        setEditedConfig({ ...editedConfig });
-                                    }
-                                }}
-                                onBlur={() => setDisplayBase(formatNumber(currentLot.base_amount, 2))}
-                                className="w-full p-2 border border-slate-200 bg-slate-50 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-right text-sm"
-                            />
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span className="text-slate-400 text-lg font-semibold">€</span>
+                                </div>
+                                <input
+                                    type="text"
+                                    value={displayBase}
+                                    onChange={(e) => {
+                                        const raw = e.target.value.replace(/\./g, '').replace(',', '.');
+                                        setDisplayBase(e.target.value);
+                                        if (!isNaN(parseFloat(raw))) {
+                                            currentLot.base_amount = parseFloat(raw);
+                                            setEditedConfig({ ...editedConfig });
+                                        }
+                                    }}
+                                    onBlur={() => setDisplayBase(formatNumber(currentLot.base_amount, 2))}
+                                    placeholder="0,00"
+                                    className="w-full pl-10 pr-4 py-3 border-2 border-slate-200 bg-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-right text-lg font-semibold text-slate-900 hover:border-slate-300 transition-colors"
+                                />
+                            </div>
                         </div>
                         <div>
                             <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1">
