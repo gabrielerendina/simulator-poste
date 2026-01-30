@@ -29,7 +29,9 @@
         "add_error": "Errore nella creazione della Gara/Lotto",
         "delete_error": "Errore nell'eliminazione della Gara/Lotto",
         "add_prompt": "Nome della nuova Gara/Lotto:",
-        "best_price_badge": "🔥 MIGLIOR PREZZO!"
+        "best_price_badge": "🔥 MIGLIOR PREZZO!",
+        "save_success": "Dati salvati con successo",
+        "save_error": "Errore durante il salvataggio"
     },
     "dashboard": {
         "strategic_report": "Report Strategico",
