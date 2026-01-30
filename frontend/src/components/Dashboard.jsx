@@ -201,17 +201,8 @@ export default function Dashboard() {
                             </div>
                             <div>
                                 <label className="text-xs font-semibold text-slate-600 mb-2 block">
-                                    Valore Offerta Competitor
+                                    Sconto Economico Competitor
                                 </label>
-                                {/* Display calculated offer value in euros */}
-                                <div className="mb-2">
-                                    <span className="text-xl font-bold text-black">
-                                        {formatCurrency(lotData?.base_amount * (1 - competitorEconDiscount / 100) || 0)}
-                                    </span>
-                                    <span className="text-xs text-slate-500 ml-2">
-                                        (Sconto: {formatNumber(competitorEconDiscount, 2)}%)
-                                    </span>
-                                </div>
                                 <div className="flex items-center gap-3">
                                     <input
                                         type="range"
@@ -370,9 +361,9 @@ export default function Dashboard() {
                                                     </div>
                                                     <div className="pt-1.5 border-t border-slate-200 mt-1.5">
                                                         <div className="flex justify-between items-baseline">
-                                                            <span className="text-[10px] text-slate-500">Costo Sconto</span>
-                                                            <span className="text-xs font-semibold text-red-600">
-                                                                -{formatCurrency(scenario.economic_impact)}
+                                                            <span className="text-[10px] text-slate-500 font-bold">Valore Offerta</span>
+                                                            <span className="text-sm font-bold text-slate-900">
+                                                                {formatCurrency(lotData?.base_amount * (1 - scenario.suggested_discount / 100))}
                                                             </span>
                                                         </div>
                                                     </div>

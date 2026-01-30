@@ -724,7 +724,10 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
 
     for req in lot_cfg.reqs:
         raw_score_i = details.get(req["id"], 0.0)
-        max_raw_i = req.get("max_points", 1.0)
+        # Use dynamic max calculation (same as used for capping raw score)
+        # This ensures consistency: max includes custom_metrics, attestazione, etc.
+        req_dict = req if isinstance(req, dict) else req.dict()
+        max_raw_i = calculate_max_points_for_req(req_dict)
         gara_weight_i = req.get("gara_weight", 0.0)
         req_type = req.get("type", "")
 
