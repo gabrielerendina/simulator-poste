@@ -1,0 +1,45 @@
+services:
+  # Backend FastAPI
+  - type: web
+    name: simulator-poste-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: PORT
+        value: 8000
+      - key: DATABASE_URL
+        value: sqlite:///./simulator_poste.db
+      - key: OIDC_ISSUER
+        value: https://asojzafbi.accounts.ondemand.com
+      - key: OIDC_CLIENT_ID
+        value: c763a5f1-287c-4115-93bc-61e06b1bd7a3
+      - key: OIDC_AUDIENCE
+        value: c763a5f1-287c-4115-93bc-61e06b1bd7a3
+      - key: FRONTEND_URL
+        sync: false  # Will be set after frontend is created
+    healthCheckPath: /api/config
+
+  # Frontend Static Site
+  - type: web
+    name: simulator-poste-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_OIDC_AUTHORITY
+        value: https://asojzafbi.accounts.ondemand.com
+      - key: VITE_OIDC_CLIENT_ID
+        value: c763a5f1-287c-4115-93bc-61e06b1bd7a3
+      - key: VITE_API_URL
+        sync: false  # Will be set after backend is created
+      - key: VITE_OIDC_REDIRECT_URI
+        sync: false  # Will be set after frontend URL is known
+      - key: VITE_OIDC_POST_LOGOUT_REDIRECT_URI
+        sync: false  # Will be set after frontend URL is known
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
