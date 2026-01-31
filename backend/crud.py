@@ -25,17 +25,19 @@ def seed_initial_data(db: Session) -> None:
     Seed database with initial data from JSON files
     Called on application startup
 
-    NOTE: Only seeds if database is completely empty (first-time initialization).
-    If any lots exist, skips lot seeding to preserve user customizations.
+    NOTE: Only seeds lots that don't already exist in database.
+    This prevents overwriting user customizations and duplicate entries.
     """
-    # Check if database already has lots (user has customized)
-    existing_lots_count = db.query(models.LotConfigModel).count()
+    # Load lot configurations from file
+    lot_configs_data = load_json_file("lot_configs.json")
 
-    # Only seed lots if database is completely empty (first-time setup)
-    if existing_lots_count == 0:
-        lot_configs_data = load_json_file("lot_configs.json")
+    # Check and seed each lot individually (only if it doesn't exist)
+    for lot_name, lot_data in lot_configs_data.items():
+        # Check if this specific lot already exists
+        existing_lot = db.query(models.LotConfigModel).filter_by(name=lot_name).first()
 
-        for lot_name, lot_data in lot_configs_data.items():
+        if not existing_lot:
+            # Lot doesn't exist, create it
             db_lot = models.LotConfigModel(
                 name=lot_name,
                 base_amount=lot_data.get("base_amount", 0.0),
