@@ -419,23 +419,18 @@ def calculate_max_points_for_req(req):
         
         # 2. Attestazione
         att_score = float(req.get("attestazione_score", 0.0))
-        # Check if bonus_label implies attestazione is a bonus type? 
-        # Current config uses "bonus_val" for attestazione usually.
-        # Let's check logic: main.py lines 612-614 use "attestazione_score".
-        # But config shows "bonus_val": 3.
-        # Lines 629: bonus = req.get("bonus_val")
-        # So usually it's sub_score + bonus.
-        
-        # 3. Bonus
-        bonus = float(req.get("bonus_val", 0.0))
-        
-        # 4. Custom Metrics
+
+        # 3. Custom Metrics
         custom_max = 0.0
         if "custom_metrics" in req:
             for m in req["custom_metrics"]:
                 custom_max += float(m.get("max_score", 0.0))
-                
-        return sub_score_max + att_score + custom_max + bonus
+
+        # Note: bonus_val is NOT included in max_raw because it's optional (bonus_active)
+        # The bonus is added to the actual raw score only when bonus_active is true
+        # and then capped to this max_raw value
+
+        return sub_score_max + att_score + custom_max
         
     return 0.0
 
@@ -665,7 +660,7 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
                 sub_score_sum = 0.0
                 criteria_list = req.get("criteria") or req.get("sub_reqs") or []
 
-                # 1. Standard Criteria/Sub-reqs (RAW - no weights)
+                # 1. Standard Criteria/Sub-reqs (RAW - WITH internal weights)
                 if inp.sub_req_vals:
                     val_map = {}
                     for s in inp.sub_req_vals:
@@ -675,8 +670,9 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
                             val_map[s.sub_id] = s.val
                     for sub in criteria_list:
                         val = val_map.get(sub["id"], 0)
-                        # RAW score: sum values WITHOUT applying weights
-                        sub_score_sum += float(val)
+                        weight = float(sub.get("weight", 1.0))
+                        # RAW score: apply internal weights (peso_interno × value)
+                        sub_score_sum += weight * float(val)
 
                 # 2. Attestazione Cliente
                 att_score = 0.0
