@@ -146,28 +146,39 @@ function AppContent() {
 
   // Unified save function for top bar button
   const handleUnifiedSave = async () => {
+    console.log("🔴 SAVE BUTTON CLICKED!");
+
     if (!config || !selectedLot) {
+      console.error("❌ No config or selectedLot", { config: !!config, selectedLot });
       showError('Nessuna configurazione da salvare');
       return;
     }
 
     try {
+      console.log("✅ Starting unified save", { lot: selectedLot });
       logger.info("Starting unified save", { lot: selectedLot });
 
-      // Save both state AND configuration
-      const [stateSuccess, configResult] = await Promise.all([
-        handleSaveState(),
-        updateConfig(config)
-      ]);
+      // Save state
+      console.log("💾 Calling handleSaveState...");
+      const stateSuccess = await handleSaveState();
+      console.log("💾 handleSaveState result:", stateSuccess);
+
+      // Save configuration
+      console.log("⚙️ Calling updateConfig...");
+      const configResult = await updateConfig(config);
+      console.log("⚙️ updateConfig result:", configResult);
 
       logger.info("Save results", { stateSuccess, configSuccess: configResult.success });
 
       if (stateSuccess && configResult.success) {
+        console.log("✅ Both saves succeeded!");
         success(t('app.save_success') || 'Dati salvati con successo');
       } else {
+        console.error("❌ Save failed", { stateSuccess, configResult });
         showError(t('app.save_error') || 'Errore durante il salvataggio');
       }
     } catch (err) {
+      console.error("❌ Exception in unified save:", err);
       logger.error("Unified save failed", err, { component: "App" });
       showError(t('app.save_error') || 'Errore durante il salvataggio');
     }

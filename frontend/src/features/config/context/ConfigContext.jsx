@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import axios from 'axios';
 import { logger } from '../../../utils/logger';
 
+const API_URL = import.meta.env.VITE_API_URL || '/api';
+
 const ConfigContext = createContext(null);
 
 export const useConfig = () => {
@@ -22,8 +24,8 @@ export const ConfigProvider = ({ children }) => {
     try {
       setLoading(true);
       const [configRes, masterRes] = await Promise.all([
-        axios.get('/api/config'),
-        axios.get('/api/master-data')
+        axios.get(`${API_URL}/config`),
+        axios.get(`${API_URL}/master-data`)
       ]);
       setConfig(configRes.data);
       setMasterData(masterRes.data);
@@ -38,10 +40,13 @@ export const ConfigProvider = ({ children }) => {
 
   const updateConfig = useCallback(async (newConfig) => {
     try {
-      await axios.post('/api/config', newConfig);
+      console.log(`🔧 Calling POST ${API_URL}/config`);
+      await axios.post(`${API_URL}/config`, newConfig);
       setConfig(newConfig);
+      console.log('✅ Config saved to backend successfully');
       return { success: true };
     } catch (err) {
+      console.error('❌ Failed to save config:', err);
       logger.error('Failed to update config', err);
       return { success: false, error: err.message };
     }
