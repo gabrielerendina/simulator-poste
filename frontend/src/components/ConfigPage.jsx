@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../utils/formatters';
 import { Plus, Trash2, Settings2, Building2, Users, DollarSign, Briefcase, FileCheck, Award, Info, TrendingUp, Search, X } from 'lucide-react';
@@ -8,18 +8,32 @@ import { useConfig } from '../features/config/context/ConfigContext';
 
 export default function ConfigPage({ onAddLot, onDeleteLot }) {
     const { t } = useTranslation();
-    const { config, masterData } = useConfig();
+    const { config, setConfig, masterData } = useConfig();
     const [editedConfig, setEditedConfig] = useState(JSON.parse(JSON.stringify(config)));
     const [selectedLot, setSelectedLot] = useState(Object.keys(editedConfig)[0] || "");
     const [activeTab, setActiveTab] = useState('resource');
     const [certSearch, setCertSearch] = useState('');
 
-    // Sync editedConfig if parent config changes (e.g. after onAddLot)
+    // Track last synced value to prevent infinite loops between context <-> local state
+    const lastSyncedToContext = useRef(JSON.stringify(config));
+
+    // Sync FROM context when config changes externally (e.g. after onAddLot/onDeleteLot/refetch)
     useEffect(() => {
-        setEditedConfig(JSON.parse(JSON.stringify(config)));
-        // If we just added a lot, it might not be the selected one yet
-        // but App.jsx usually handles the selection change
+        const configStr = JSON.stringify(config);
+        if (configStr !== lastSyncedToContext.current) {
+            setEditedConfig(JSON.parse(configStr));
+            lastSyncedToContext.current = configStr;
+        }
     }, [config]);
+
+    // Sync TO context whenever editedConfig changes (so unified save can access latest changes)
+    useEffect(() => {
+        const editedStr = JSON.stringify(editedConfig);
+        if (editedStr !== lastSyncedToContext.current) {
+            lastSyncedToContext.current = editedStr;
+            setConfig(JSON.parse(editedStr));
+        }
+    }, [editedConfig, setConfig]);
 
     // For formatted display of Euro values
     const [displayBase, setDisplayBase] = useState("");

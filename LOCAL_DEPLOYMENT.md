@@ -1,52 +1,92 @@
 # Local Deployment Guide
 
-This guide explains how to run the Simulator Poste application locally using Docker.
+Run the Simulator Poste application locally using Docker or manual setup.
 
 ## Prerequisites
 
-- **Docker Desktop** installed and running
-- **Git** (to clone the repository)
-- **Bash** shell (available on macOS/Linux, or use Git Bash on Windows)
+- **Docker Desktop** (for Docker deployment)
+- **Python 3.12+** (for manual backend)
+- **Node.js 20+** (for manual frontend)
+- **Git**
 
-## Quick Start
+## Quick Start with Docker
 
-### 1. Start All Services
-
-Run the start-all script to build and start both frontend and backend:
+### Start All Services
 
 ```bash
 ./start-all.sh
 ```
 
 This script will:
-1. ✓ Check if Docker is running
-2. ✓ Check/create `.env` file with default configuration
-3. ✓ Build Docker containers (frontend + backend)
-4. ✓ Start services in detached mode
-5. ✓ Wait for health checks to pass
-6. ✓ Display service URLs and useful commands
+1. Check if Docker is running
+2. Create `.env` file with defaults if missing
+3. Build Docker containers
+4. Start frontend and backend
+5. Wait for health checks
+6. Display URLs and useful commands
 
-### 2. Access the Application
-
-Once started, you can access:
+### Access the Application
 
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
 
-### 3. Stop All Services
-
-To stop the application:
+### Stop All Services
 
 ```bash
 ./stop-all.sh
 ```
 
-This will gracefully stop all containers. You'll be asked if you want to remove database data.
+## Manual Development Setup
 
-## Manual Docker Compose Commands
+### Backend
 
-If you prefer to use Docker Compose directly:
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Or use the script:
+```bash
+./start-backend.sh
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Or use the script:
+```bash
+./start-frontend.sh
+```
+
+## Environment Configuration
+
+Create a `.env` file in the project root:
+
+```bash
+# Environment
+ENVIRONMENT=development
+
+# OIDC Configuration (SAP IAS)
+OIDC_ISSUER=https://your-tenant.accounts.ondemand.com
+OIDC_CLIENT_ID=your-client-id
+OIDC_AUDIENCE=your-audience
+
+# Frontend URL (for CORS)
+FRONTEND_URL=http://localhost:5173
+```
+
+The `.env` file is automatically created by `start-all.sh` with default values.
+
+## Docker Compose Commands
 
 ```bash
 # Build containers
@@ -58,6 +98,9 @@ docker-compose up -d
 # View logs
 docker-compose logs -f
 
+# View backend logs only
+docker-compose logs -f backend
+
 # Stop services
 docker-compose down
 
@@ -65,24 +108,21 @@ docker-compose down
 docker-compose down -v
 ```
 
-## Environment Configuration
+## Database
 
-The application uses environment variables defined in `.env`:
+The application uses SQLite stored at `backend/simulator_poste.db`.
+
+Initial data is seeded from:
+- `backend/lot_configs.json` - Lot configurations
+- `backend/master_data.json` - Master data (certificates, labels)
+
+### Reset Database
 
 ```bash
-# Environment
-ENVIRONMENT=development
-
-# OIDC Configuration
-OIDC_ISSUER=https://asojzafbi.accounts.ondemand.com
-OIDC_CLIENT_ID=c763a5f1-287c-4115-93bc-61e06b1bd7a3
-OIDC_AUDIENCE=c763a5f1-287c-4115-93bc-61e06b1bd7a3
-
-# Frontend URL (for CORS)
-FRONTEND_URL=http://localhost:5173
+docker-compose down
+rm backend/simulator_poste.db
+docker-compose up -d
 ```
-
-The `.env` file is automatically created by `start-all.sh` if it doesn't exist.
 
 ## Troubleshooting
 
@@ -91,76 +131,47 @@ The `.env` file is automatically created by `start-all.sh` if it doesn't exist.
 ```
 Error: Docker is not running
 ```
-
-**Solution**: Start Docker Desktop and wait for it to be fully running, then try again.
+Start Docker Desktop and wait for it to be fully running.
 
 ### Port already in use
 
 ```
 Error: Bind for 0.0.0.0:5173 failed: port is already allocated
 ```
-
-**Solution**: Stop any other services using ports 5173 or 8000, or modify `docker-compose.yml` to use different ports.
-
-### Build failures
-
+Stop other services using ports 5173 or 8000:
+```bash
+lsof -ti:5173,8000 | xargs kill -9
 ```
-Error: Build failed
-```
-
-**Solution**: 
-1. Clean Docker cache: `docker system prune -a`
-2. Try building manually: `docker-compose build --no-cache`
 
 ### Health check timeout
 
-If a service doesn't become healthy:
-
-1. Check logs: `docker-compose logs backend` or `docker-compose logs frontend`
-2. Verify the service is running: `docker-compose ps`
-3. Restart the service: `docker-compose restart backend`
-
-### Database issues
-
-To reset the database:
-
+Check container logs:
 ```bash
-./stop-all.sh
-# Choose "yes" when asked to remove database volumes
-./start-all.sh
+docker-compose logs backend
+docker-compose logs frontend
+```
+
+### Build failures
+
+Clean Docker cache and rebuild:
+```bash
+docker system prune -a
+docker-compose build --no-cache
 ```
 
 ## Architecture
 
-The local deployment consists of:
-
-- **Backend**: FastAPI application on port 8000 (SQLite database)
-- **Frontend**: React SPA served by nginx on port 5173 (with API proxy to backend)
-
-Both services have health checks configured and the frontend waits for the backend to be healthy before starting.
-
-## Logs
-
-View logs for all services:
-```bash
-docker-compose logs -f
+```
+┌─────────────────┐      ┌─────────────────┐
+│   Frontend      │      │   Backend       │
+│   (React/Vite)  │─────▶│   (FastAPI)     │
+│   Port 5173     │      │   Port 8000     │
+└─────────────────┘      └────────┬────────┘
+                                  │
+                         ┌────────▼────────┐
+                         │   SQLite DB     │
+                         │ simulator_poste │
+                         └─────────────────┘
 ```
 
-View logs for specific service:
-```bash
-docker-compose logs -f backend
-docker-compose logs -f frontend
-```
-
-## Database
-
-By default, the application uses SQLite stored in `backend/simulator_poste.db`.
-
-The database is seeded with initial data from `backend/lot_configs.json` on first startup.
-
-To reset the database, stop the containers and remove the SQLite file:
-```bash
-docker-compose down
-rm backend/simulator_poste.db
-docker-compose up -d
-```
+Both services have health checks configured. The frontend waits for the backend to be healthy before starting in Docker mode.

@@ -40,13 +40,11 @@ export const ConfigProvider = ({ children }) => {
 
   const updateConfig = useCallback(async (newConfig) => {
     try {
-      console.log(`🔧 Calling POST ${API_URL}/config`);
-      await axios.post(`${API_URL}/config`, newConfig);
-      setConfig(newConfig);
-      console.log('✅ Config saved to backend successfully');
+      const res = await axios.post(`${API_URL}/config`, newConfig);
+      // Use response from backend (includes correct state from DB, not stale client state)
+      setConfig(res.data);
       return { success: true };
     } catch (err) {
-      console.error('❌ Failed to save config:', err);
       logger.error('Failed to update config', err);
       return { success: false, error: err.message };
     }
@@ -58,6 +56,7 @@ export const ConfigProvider = ({ children }) => {
 
   const value = {
     config,
+    setConfig,
     masterData,
     loading,
     error,

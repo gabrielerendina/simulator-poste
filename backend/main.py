@@ -780,9 +780,12 @@ def calculate_score(data: schemas.CalculateRequest, db: Session = Depends(get_db
 
                 weighted_raw_i = weighted_sub_sum + att_score + custom_score + bonus
 
-                # 3. Calculate max weighted raw
-                weight_sum = sum(float(c.get("weight", 1)) for c in criteria_list)
-                max_weighted_sub = weight_sum * 5.0
+                # 3. Calculate max weighted raw (using actual max_value per criterion)
+                # FIX: Use each criterion's actual max_value instead of hardcoded 5.0
+                max_weighted_sub = sum(
+                    float(c.get("weight", 1.0)) * float(c.get("max_value", 5.0))
+                    for c in criteria_list
+                )
                 max_weighted_raw_i = max_weighted_sub + float(req.get("attestazione_score", 0.0)) + bonus
 
                 # Add custom metrics max
@@ -900,30 +903,38 @@ def monte_carlo_simulation(
         data.competitor_discount_mean, data.competitor_discount_std, data.iterations
     )
     wins = 0
-    results = []
 
     my_scores = []
     competitor_scores = []
 
+    max_tech = lot_cfg.max_tech_score
+    max_econ = lot_cfg.max_econ_score
+
+    # Use user-provided competitor tech score, or default to 90% of max
+    comp_tech_mean = data.competitor_tech_score_mean if data.competitor_tech_score_mean is not None else max_tech * 0.9
+    comp_tech_std = data.competitor_tech_score_std
+
     for c_disc in comp_discounts:
         c_disc = max(0, min(100, c_disc))
-        p_best = data.base_amount * (1 - (c_disc / 100))
+        p_comp = data.base_amount * (1 - (c_disc / 100))
         p_off = data.base_amount * (1 - (data.my_discount / 100))
 
-        max_tech = lot_cfg.max_tech_score
-        max_econ = lot_cfg.max_econ_score
-
-        comp_tech_score = np.random.normal(loc=max_tech * 0.9, scale=5.0)
+        # Competitor tech score with variance around user-specified mean
+        comp_tech_score = np.random.normal(loc=comp_tech_mean, scale=comp_tech_std)
         comp_tech_score = max(0, min(max_tech, comp_tech_score))
 
+        # Determine actual best price
+        p_best_actual = min(p_comp, p_off)
+
+        # Our economic score
         econ_score = calculate_economic_score(
-            data.base_amount, p_off, p_best, lot_cfg.alpha, max_econ
+            data.base_amount, p_off, p_best_actual, lot_cfg.alpha, max_econ
         )
         my_total = data.current_tech_score + econ_score
 
-        p_best_actual = min(p_best, p_off)
+        # Competitor economic score (against actual best)
         c_econ = calculate_economic_score(
-            data.base_amount, p_best, p_best_actual, lot_cfg.alpha, max_econ
+            data.base_amount, p_comp, p_best_actual, lot_cfg.alpha, max_econ
         )
         comp_total = comp_tech_score + c_econ
 
@@ -963,31 +974,39 @@ def optimize_discount(data: schemas.OptimizeDiscountRequest, db: Session = Depen
         raise HTTPException(status_code=404, detail="Lot not found")
     lot_cfg = schemas.LotConfig.model_validate(lot_cfg_db)
 
-    # Calculate competitor's economic score and total score
+    # Calculate base prices
     p_base = data.base_amount
     p_comp = p_base * (1 - data.competitor_discount / 100)
-    p_best = p_base * (1 - data.best_offer_discount / 100)
+    p_market_best = p_base * (1 - data.best_offer_discount / 100)
 
-    # Competitor's economic score depends on best offer:
-    # - If competitor_discount >= best_offer_discount → p_comp <= p_best → max score
-    # - Otherwise → reduced score according to formula
-    comp_econ_score = calculate_economic_score(
-        p_base, p_comp, p_best, lot_cfg.alpha, lot_cfg.max_econ_score
+    # Initial competitor score (before we make our offer)
+    initial_comp_econ = calculate_economic_score(
+        p_base, p_comp, p_market_best, lot_cfg.alpha, lot_cfg.max_econ_score
     )
-    competitor_total = data.competitor_tech_score + comp_econ_score
+    initial_competitor_total = data.competitor_tech_score + initial_comp_econ
 
-    logger.info(f"Optimizer: competitor_total={competitor_total:.2f}, my_tech={data.my_tech_score:.2f}, comp_econ={comp_econ_score:.2f}")
+    logger.info(f"Optimizer: initial_competitor_total={initial_competitor_total:.2f}, my_tech={data.my_tech_score:.2f}, comp_econ={initial_comp_econ:.2f}")
 
     # Calculate the minimum discount needed to beat competitor
-    # Start from 0% and find where we start winning
+    # IMPORTANT: When our price beats the market best, competitor's score must be recalculated!
     min_discount_to_beat = None
     can_beat = False
 
     for test_disc in range(0, 71, 1):
         p_test = p_base * (1 - test_disc / 100)
-        test_econ = calculate_economic_score(p_base, p_test, p_best, lot_cfg.alpha, lot_cfg.max_econ_score)
+
+        # Determine the actual best price (could be us, competitor, or market)
+        p_actual_best = min(p_test, p_market_best)
+
+        # Our economic score
+        test_econ = calculate_economic_score(p_base, p_test, p_actual_best, lot_cfg.alpha, lot_cfg.max_econ_score)
         test_total = data.my_tech_score + test_econ
-        if test_total > competitor_total:
+
+        # RECALCULATE competitor's score against the new best price
+        comp_econ_updated = calculate_economic_score(p_base, p_comp, p_actual_best, lot_cfg.alpha, lot_cfg.max_econ_score)
+        competitor_total_updated = data.competitor_tech_score + comp_econ_updated
+
+        if test_total > competitor_total_updated:
             min_discount_to_beat = test_disc
             can_beat = True
             break
@@ -1029,10 +1048,20 @@ def optimize_discount(data: schemas.OptimizeDiscountRequest, db: Session = Depen
 
         # Calculate my score with this discount
         p_my = p_base * (1 - discount / 100)
+
+        # Determine actual best price (could be us or market)
+        p_actual_best_scenario = min(p_my, p_market_best)
+
         my_econ = calculate_economic_score(
-            p_base, p_my, p_best, lot_cfg.alpha, lot_cfg.max_econ_score
+            p_base, p_my, p_actual_best_scenario, lot_cfg.alpha, lot_cfg.max_econ_score
         )
         my_total = data.my_tech_score + my_econ
+
+        # Competitor's score with our offer considered
+        comp_econ_scenario = calculate_economic_score(
+            p_base, p_comp, p_actual_best_scenario, lot_cfg.alpha, lot_cfg.max_econ_score
+        )
+        competitor_total_scenario = data.competitor_tech_score + comp_econ_scenario
 
         # Run Monte Carlo simulation to estimate win probability
         wins = 0
@@ -1046,19 +1075,28 @@ def optimize_discount(data: schemas.OptimizeDiscountRequest, db: Session = Depen
             comp_disc_var = max(0, min(data.best_offer_discount, comp_disc_var))
             p_comp_var = p_base * (1 - comp_disc_var / 100)
 
-            # Competitor economic score
+            # Actual best in this Monte Carlo iteration (including our offer)
+            p_actual_best_mc = min(p_my, p_comp_var, p_market_best)
+
+            # Competitor economic score against actual best
             comp_econ_var = calculate_economic_score(
-                p_base, p_comp_var, p_best, lot_cfg.alpha, lot_cfg.max_econ_score
+                p_base, p_comp_var, p_actual_best_mc, lot_cfg.alpha, lot_cfg.max_econ_score
             )
             comp_total_var = comp_tech_var + comp_econ_var
 
-            if my_total > comp_total_var:
+            # Our score against actual best (recalculate in case competitor beat market)
+            my_econ_var = calculate_economic_score(
+                p_base, p_my, p_actual_best_mc, lot_cfg.alpha, lot_cfg.max_econ_score
+            )
+            my_total_var = data.my_tech_score + my_econ_var
+
+            if my_total_var > comp_total_var:
                 wins += 1
 
         prob = (wins / iterations) * 100
 
         economic_impact = p_base - p_my
-        delta_vs_competitor = my_total - competitor_total
+        delta_vs_competitor = my_total - competitor_total_scenario
 
         logger.info(f"  Result: prob={prob:.1f}%, my_total={my_total:.2f}, delta={delta_vs_competitor:.2f}")
 
@@ -1073,9 +1111,9 @@ def optimize_discount(data: schemas.OptimizeDiscountRequest, db: Session = Depen
         })
 
     return {
-        "competitor_total_score": round(competitor_total, 2),
+        "competitor_total_score": round(initial_competitor_total, 2),
         "competitor_tech_score": round(data.competitor_tech_score, 2),
-        "competitor_econ_score": round(comp_econ_score, 2),
+        "competitor_econ_score": round(initial_comp_econ, 2),
         "scenarios": scenarios
     }
 
@@ -1098,13 +1136,17 @@ def export_pdf(data: schemas.ExportPDFRequest, db: Session = Depends(get_db)):
     comp_discounts = np.random.normal(data.competitor_discount, 3.5, iterations)
     score_distribution = []
 
+    p_off = data.base_amount * (1 - (data.my_discount / 100))
+
     for c_disc in comp_discounts:
         c_disc = max(0, min(100, c_disc))
-        p_best = data.base_amount * (1 - (c_disc / 100))
-        p_off = data.base_amount * (1 - (data.my_discount / 100))
+        p_comp = data.base_amount * (1 - (c_disc / 100))
+
+        # Determine actual best price (could be us or competitor)
+        p_actual_best = min(p_off, p_comp)
 
         econ_score = calculate_economic_score(
-            data.base_amount, p_off, p_best, lot_cfg.alpha, lot_cfg.max_econ_score
+            data.base_amount, p_off, p_actual_best, lot_cfg.alpha, lot_cfg.max_econ_score
         )
         my_total = data.technical_score + econ_score
         score_distribution.append(my_total)

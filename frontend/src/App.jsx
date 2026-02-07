@@ -45,6 +45,7 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar state
   const lastLoadedLot = useRef(null); // Track last loaded lot to prevent loops
+  const isLoadingState = useRef(false); // Prevent auto-save during state load
 
   // Derived values from context
   const baseAmount = config && selectedLot && config[selectedLot] ? config[selectedLot].base_amount : 0;
@@ -106,7 +107,7 @@ function AppContent() {
       const lot = config[selectedLot];
 
       // Load saved state if available, otherwise use defaults
-      resetState({
+      const newState = {
         selectedLot,
         myDiscount: lot.state?.my_discount ?? 0.0,
         competitorDiscount: lot.state?.competitor_discount ?? 30.0,
@@ -114,9 +115,19 @@ function AppContent() {
         competitorEconDiscount: lot.state?.competitor_econ_discount ?? 30.0,
         techInputs: lot.state?.tech_inputs ?? {},
         companyCerts: lot.state?.company_certs ?? {}
-      });
+      };
+
+      // Block auto-save during state load to prevent overwriting with stale data
+      isLoadingState.current = true;
+
+      resetState(newState);
 
       lastLoadedLot.current = selectedLot;
+
+      // Re-enable auto-save after state has stabilized
+      setTimeout(() => {
+        isLoadingState.current = false;
+      }, 2000);
     }
   }, [selectedLot, config, resetState]);
 
@@ -146,39 +157,28 @@ function AppContent() {
 
   // Unified save function for top bar button
   const handleUnifiedSave = async () => {
-    console.log("🔴 SAVE BUTTON CLICKED!");
-
     if (!config || !selectedLot) {
-      console.error("❌ No config or selectedLot", { config: !!config, selectedLot });
       showError('Nessuna configurazione da salvare');
       return;
     }
 
     try {
-      console.log("✅ Starting unified save", { lot: selectedLot });
       logger.info("Starting unified save", { lot: selectedLot });
 
-      // Save state
-      console.log("💾 Calling handleSaveState...");
-      const stateSuccess = await handleSaveState();
-      console.log("💾 handleSaveState result:", stateSuccess);
-
-      // Save configuration
-      console.log("⚙️ Calling updateConfig...");
-      const configResult = await updateConfig(config);
-      console.log("⚙️ updateConfig result:", configResult);
+      // Save both state AND configuration
+      const [stateSuccess, configResult] = await Promise.all([
+        handleSaveState(),
+        updateConfig(config)
+      ]);
 
       logger.info("Save results", { stateSuccess, configSuccess: configResult.success });
 
       if (stateSuccess && configResult.success) {
-        console.log("✅ Both saves succeeded!");
         success(t('app.save_success') || 'Dati salvati con successo');
       } else {
-        console.error("❌ Save failed", { stateSuccess, configResult });
         showError(t('app.save_error') || 'Errore durante il salvataggio');
       }
     } catch (err) {
-      console.error("❌ Exception in unified save:", err);
       logger.error("Unified save failed", err, { component: "App" });
       showError(t('app.save_error') || 'Errore durante il salvataggio');
     }
@@ -187,6 +187,9 @@ function AppContent() {
   // Debounced auto-save effect for simulation state
   useEffect(() => {
     if (!config || !selectedLot || loading || authLoading || !isAuthenticated) return;
+
+    // Skip auto-save during state loading to prevent overwriting loaded data
+    if (isLoadingState.current) return;
 
     const timer = setTimeout(() => {
       handleSaveState();

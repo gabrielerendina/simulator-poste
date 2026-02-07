@@ -119,8 +119,8 @@ def update_lot_config(
         db_lot.economic_formula = lot_config.economic_formula
         db_lot.company_certs = lot_config.company_certs
         db_lot.reqs = lot_config.reqs
-        if lot_config.state:
-            db_lot.state = lot_config.state
+        # NOTE: state is NOT updated here - it is saved separately via POST /config/state
+        # to prevent POST /config from overwriting simulation state with stale data
 
         db.commit()
         db.refresh(db_lot)

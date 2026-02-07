@@ -50,6 +50,8 @@ export default function Dashboard() {
                     competitor_discount_mean: competitorDiscount,
                     competitor_discount_std: 3.5, // assumed volatility
                     current_tech_score: results.technical_score,
+                    competitor_tech_score_mean: competitorTechScore, // use actual competitor tech score
+                    competitor_tech_score_std: 3.0, // assumed volatility
                     iterations: 500
                 });
                 setMonteCarlo(res.data);

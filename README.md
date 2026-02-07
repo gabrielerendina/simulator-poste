@@ -1,168 +1,202 @@
-# Poste Tender Simulator
+# Simulator Poste - Tender Evaluation System
 
-## Overview
-Simulatore enterprise-ready di valutazione tecnica ed economica per gare a lotti, completamente configurabile con frontend React e backend FastAPI.
+Enterprise-ready simulator for technical and economic evaluation of multi-lot public tenders. Built with React + FastAPI.
 
-## Struttura progetto
-- **backend/**: FastAPI con logging strutturato, health checks, API REST, PDF export
-- **frontend/**: React 19+, Tailwind, UI dinamica, i18n (italiano)
-- **Database**: SQLite con SQLAlchemy ORM
-- **Docker**: Configurazione Docker Compose per deployment
+## Features
 
-## 🚀 Avvio Rapido (Recommended)
+- **Multi-lot Configuration**: Configure multiple tender lots with different requirements and weights
+- **Technical Scoring**: Evaluate proposals based on configurable criteria and sub-criteria
+- **Economic Scoring**: Progressive discount formula with alpha exponent
+- **Monte Carlo Simulation**: Win probability analysis with 500+ iterations
+- **Discount Optimizer**: Find optimal discount for maximum win probability
+- **PDF Export**: Generate detailed evaluation reports
+- **OIDC Authentication**: Secure access with SAP IAS integration
+- **Internationalization**: Italian language support (i18n)
 
-### Avvio Completo (Backend + Frontend)
+## Project Structure
+
+```
+simulator-poste/
+├── backend/                    # FastAPI Backend
+│   ├── main.py                # API endpoints & business logic
+│   ├── services/
+│   │   └── scoring_service.py # Scoring calculations
+│   ├── models.py              # SQLAlchemy ORM models
+│   ├── schemas.py             # Pydantic request/response schemas
+│   ├── crud.py                # Database CRUD operations
+│   ├── auth.py                # OIDC authentication
+│   └── database.py            # SQLite database config
+│
+├── frontend/                   # React Frontend
+│   ├── src/
+│   │   ├── App.jsx            # Main application component
+│   │   ├── components/        # UI components
+│   │   │   ├── Dashboard.jsx  # Score gauges & charts
+│   │   │   ├── ConfigPage.jsx # Lot configuration
+│   │   │   ├── TechEvaluator.jsx # Technical evaluation
+│   │   │   └── Sidebar.jsx    # Navigation & controls
+│   │   ├── features/
+│   │   │   ├── config/        # Configuration context
+│   │   │   └── simulation/    # Simulation context
+│   │   └── shared/            # Shared components & hooks
+│   └── package.json
+│
+├── k8s/                       # Kubernetes/Kyma manifests
+├── docker-compose.yml         # Local Docker deployment
+├── start-all.sh              # Docker-based startup
+├── start-backend.sh          # Backend-only startup
+└── start-frontend.sh         # Frontend-only startup
+```
+
+## Quick Start
+
+### Option 1: Docker (Recommended)
+
 ```bash
 ./start-all.sh
 ```
-Avvia entrambi i server in parallelo:
-- Backend: http://localhost:8000
+
+This starts both services:
 - Frontend: http://localhost:5173
-
-### Avvio Singolo Server
-
-**Backend solo:**
-```bash
-./start-backend.sh
-```
-- Server: http://localhost:8000
+- Backend: http://localhost:8000
 - API Docs: http://localhost:8000/docs
-- Health Check: http://localhost:8000/health
 
-**Frontend solo:**
-```bash
-./start-frontend.sh
-```
-- Server: http://localhost:5173
+### Option 2: Manual Development
 
-Gli script gestiscono automaticamente:
-- ✅ Installazione dipendenze
-- ✅ Virtual environment (Python)
-- ✅ Validazione porte
-- ✅ Auto-reload in development
-
-## 🔧 Avvio Manuale
-
-### Backend
+**Backend:**
 ```bash
 cd backend
 python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Frontend
+**Frontend:**
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## 🏥 Health Checks & Monitoring
+## API Endpoints
 
-Il backend espone 4 endpoint di monitoring:
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/config` | Get all lot configurations |
+| POST | `/config` | Update lot configuration |
+| POST | `/config/add` | Add new lot |
+| DELETE | `/config/{lot_key}` | Delete lot |
+| POST | `/config/state` | Save simulation state |
+| GET | `/master-data` | Get master data (certs, labels) |
+| POST | `/calculate` | Calculate technical & economic scores |
+| POST | `/simulate` | Generate discount simulation curve |
+| POST | `/monte-carlo` | Run Monte Carlo win probability |
+| POST | `/optimize-discount` | Find optimal discount |
+| POST | `/export-pdf` | Generate PDF report |
+| GET | `/health` | Health check with DB status |
+| GET | `/metrics` | System metrics (CPU, RAM) |
 
-- `GET /health` - Status completo (database, configurazioni, master data)
-- `GET /health/ready` - Readiness probe (Kubernetes)
-- `GET /health/live` - Liveness probe
-- `GET /metrics` - Metriche sistema (CPU, RAM, threads)
+## Scoring Formulas
 
-Esempio:
-```bash
-curl http://localhost:8000/health | jq
+### Technical Score
+
+```
+Raw Score = Σ(criterion_weight × judgment_value) + bonus_points
+Technical Score = (Raw Score / Max Raw Score) × Max Tech Score
 ```
 
-## 🌍 Configurazione Ambienti
+Where judgment values are: 0 (Inadequate), 2 (Partial), 3 (Adequate), 4 (Good), 5 (Excellent)
 
-Il sistema supporta 3 ambienti configurabili via variabili:
+### Economic Score
 
-```bash
-# Development (default)
-ENVIRONMENT=development
-
-# Staging
-ENVIRONMENT=staging FRONTEND_URL=https://staging.example.com
-
-# Production
-ENVIRONMENT=production FRONTEND_URL=https://example.com
+```
+ratio = (P_base - P_offered) / (P_base - P_actual_best)
+Economic Score = Max Econ × (ratio ^ alpha)
 ```
 
-File di configurazione:
-- `.env.example` - Template development
-- `.env.staging.example` - Template staging
-- `.env.production.example` - Template production
+Where:
+- `P_actual_best = min(P_offered, P_competitor)`
+- `alpha` controls discount reward curve (default: 0.3)
 
-### CORS Configuration
-- **Development**: Tutti i localhost (3000, 5173, 8080)
-- **Staging**: URL staging + localhost per test
-- **Production**: Solo URL production specificato in `FRONTEND_URL`
+## Configuration
 
-## 📝 Logging
-
-Logging strutturato in JSON per production:
-- **Development**: Pretty-print colorato per console
-- **Production**: JSON format per aggregatori (Datadog, ELK, etc.)
-
-Livelli: `DEBUG`, `INFO`, `WARN`, `ERROR`
-
-## 🧪 Testing
+### Environment Variables
 
 ```bash
+# Backend
+ENVIRONMENT=development|staging|production
+OIDC_ISSUER=https://your-ias.accounts.ondemand.com
+OIDC_CLIENT_ID=your-client-id
+OIDC_AUDIENCE=your-audience
+FRONTEND_URL=http://localhost:5173
+
+# Frontend (via Vite)
+VITE_API_URL=/api
+VITE_OIDC_ISSUER=...
+VITE_OIDC_CLIENT_ID=...
+```
+
+### Database
+
+SQLite database stored at `backend/simulator_poste.db`. Seeded automatically from `lot_configs.json` on first startup.
+
+## Testing
+
+```bash
+# Backend tests
 cd backend
-python -m pytest test_main.py -v
+pip install -r requirements-test.txt
+pytest test_main.py -v
+
+# Frontend tests
+cd frontend
+npm run test
 ```
 
-Test coverage:
-- ✅ 20 test passati (77%)
-- ⚠️ Alcuni test da aggiornare per nuove validazioni
+## Deployment
 
-## 📦 Dipendenze Principali
+### Kubernetes/Kyma
+
+Manifests in `k8s/` folder:
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/backend/
+kubectl apply -f k8s/frontend/
+kubectl apply -f k8s/apirule.yaml
+```
+
+### Render.com
+
+Configuration in `render.yaml` for automatic deployment.
+
+## Tech Stack
 
 **Backend:**
 - FastAPI 0.128.0
 - SQLAlchemy 2.0.46
 - Pydantic 2.12.5
-- ReportLab 4.4.9 (PDF export)
-- psutil 5.9.8 (metrics)
+- NumPy 2.2.6
+- ReportLab 4.4.9
 
 **Frontend:**
 - React 19.2.0
 - Vite 7.2.4
 - Tailwind CSS 4.1.18
-- i18next 25.8.0 (internazionalizzazione)
-- Recharts (visualizzazioni)
+- Recharts 3.6.0
+- i18next 25.7.4
+- Axios 1.13.2
 
-## 🐳 Docker Deployment
+## Performance
 
-```bash
-docker-compose up --build
-```
+- Backend: ~54MB RAM, <1% CPU idle
+- Frontend: HMR in <100ms
+- API: <500ms p95 response time
 
-Health check configurato su `/health/ready`
+## Author
 
-## 📊 Features Enterprise
-
-- ✅ Structured logging (JSON)
-- ✅ Health checks (Kubernetes-ready)
-- ✅ Environment-based CORS
-- ✅ Internationalization (i18n)
-- ✅ Database ORM (SQLAlchemy)
-- ✅ API validation (Pydantic)
-- ✅ PDF export with charts
-- ✅ Monte Carlo simulation (500 iterations)
-
-## 📖 Configurazione
-
-Tutte le configurazioni sono persistite nel database SQLite:
-- **Lot Configurations**: Parametri gara/lotto, requisiti, pesi
-- **Master Data**: Certificazioni globali, etichette requisiti
-
-## ⚡ Performance
-
-- Backend: ~54MB RAM, <1% CPU (idle)
-- Frontend: HMR (Hot Module Replacement) in <100ms
-- Database: SQLite con indexes ottimizzati
-
-## Autore
 Gabriele Rendina
+
+## License
+
+Proprietary - All rights reserved

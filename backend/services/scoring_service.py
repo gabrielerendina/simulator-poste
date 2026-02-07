@@ -41,10 +41,10 @@ class ScoringService:
         # Calculate denominator (spread from base to best price)
         denom = p_base - actual_best
         if denom <= 0:
-            # Edge case: if actual_best >= p_base, return max score if we're within range
-            if actual_best == p_base:
-                return 0.0
-            return max_econ
+            # Edge case: if no discount spread exists
+            # If both prices equal base price, no discount → score = 0
+            # If best price > base price (invalid), return 0
+            return 0.0
 
         # Calculate numerator (our discount)
         num = p_base - p_offered
