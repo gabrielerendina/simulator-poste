@@ -32,6 +32,7 @@ from database import SessionLocal, engine
 from logging_config import setup_logging, get_logger
 from auth import OIDCMiddleware, OIDCConfig, get_current_user
 from services.scoring_service import ScoringService
+from pdf_generator import generate_pdf_report
 
 # Setup structured logging
 setup_logging()
@@ -1141,7 +1142,8 @@ def optimize_discount(data: schemas.OptimizeDiscountRequest, db: Session = Depen
 @api_router.post("/export-pdf")
 def export_pdf(data: schemas.ExportPDFRequest, db: Session = Depends(get_db)):
     """
-    Export comprehensive PDF report with REAL Monte Carlo simulation results
+    Export comprehensive PDF report with branding, multi-page layout,
+    and detailed strategic analysis.
     """
     logger.info(f"PDF export requested for lot: {data.lot_key}")
 
@@ -1151,7 +1153,7 @@ def export_pdf(data: schemas.ExportPDFRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Lot not found")
     lot_cfg = schemas.LotConfig.model_validate(lot_cfg_db)
 
-    # Run REAL Monte Carlo simulation (500 iterations)
+    # Run Monte Carlo simulation (500 iterations)
     iterations = 500
     comp_discounts = np.random.normal(data.competitor_discount, 3.5, iterations)
     score_distribution = []
@@ -1161,8 +1163,6 @@ def export_pdf(data: schemas.ExportPDFRequest, db: Session = Depends(get_db)):
     for c_disc in comp_discounts:
         c_disc = max(0, min(100, c_disc))
         p_comp = data.base_amount * (1 - (c_disc / 100))
-
-        # Determine actual best price (could be us or competitor)
         p_actual_best = min(p_off, p_comp)
 
         econ_score = calculate_economic_score(
@@ -1173,134 +1173,47 @@ def export_pdf(data: schemas.ExportPDFRequest, db: Session = Depends(get_db)):
 
     score_distribution = np.array(score_distribution)
 
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
-    styles = getSampleStyleSheet()
-    story = []
-
-    # Title
-    title_style = ParagraphStyle(
-        "TitleStyle", parent=styles["Heading1"], alignment=1, spaceAfter=20
+    # Calculate win probability
+    competitor_econ = calculate_economic_score(
+        data.base_amount,
+        data.base_amount * (1 - data.competitor_discount / 100),
+        data.base_amount * (1 - max(data.my_discount, data.competitor_discount) / 100),
+        lot_cfg.alpha,
+        lot_cfg.max_econ_score
     )
-    story.append(Paragraph(f"Report Strategico: {data.lot_key}", title_style))
-    story.append(Spacer(1, 12))
+    competitor_total = (data.max_tech_score * 0.9) + competitor_econ
+    wins = np.sum(score_distribution >= competitor_total)
+    win_probability = (wins / iterations) * 100
 
-    # Executive Summary
-    story.append(Paragraph("Sintesi Esecutiva", styles["Heading2"]))
-    summary_text = f"La simulazione per il lotto <b>{data.lot_key}</b> evidenzia un punteggio totale di <b>{data.total_score}</b> punti, con uno sconto offerto del {data.my_discount}%."
-    story.append(Paragraph(summary_text, styles["Normal"]))
-    story.append(Spacer(1, 12))
+    # Prepare category scores
+    category_scores = {
+        'company_certs': data.category_company_certs,
+        'resource': data.category_resource,
+        'reference': data.category_reference,
+        'project': data.category_project,
+    }
 
-    # Score Table - Using dynamic max scores
-    table_data = [
-        ["Componente", "Punteggio"],
-        ["Punteggio Tecnico", f"{data.technical_score:.2f} / {data.max_tech_score:.2f}"],
-        ["Punteggio Economico", f"{data.economic_score:.2f} / {data.max_econ_score:.2f}"],
-        ["TOTALE", f"{data.total_score:.2f} / 100.00"],
-    ]
-    t = Table(table_data, colWidths=[200, 150])
-    t.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.blue),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                ("BACKGROUND", (0, 3), (-1, 3), colors.lightgrey),
-                ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ]
-        )
+    # Generate PDF using the new comprehensive generator
+    buffer = generate_pdf_report(
+        lot_key=data.lot_key,
+        base_amount=data.base_amount,
+        technical_score=data.technical_score,
+        economic_score=data.economic_score,
+        total_score=data.total_score,
+        my_discount=data.my_discount,
+        competitor_discount=data.competitor_discount,
+        category_scores=category_scores,
+        max_tech_score=data.max_tech_score,
+        max_econ_score=data.max_econ_score,
+        score_distribution=score_distribution,
+        win_probability=win_probability,
+        optimal_discount=None,  # Can be calculated if needed
+        scenarios=None,
+        iterations=iterations
     )
-    story.append(t)
-    story.append(Spacer(1, 20))
-
-    # Weighted Category Scores Table
-    story.append(Paragraph("Punteggi Pesati per Categoria", styles["Heading2"]))
-    category_data = [
-        ["Categoria", "Punteggio Pesato"],
-        ["Certificazioni Aziendali", f"{data.category_company_certs:.2f}"],
-        ["Certificazioni Professionali", f"{data.category_resource:.2f}"],
-        ["Referenze", f"{data.category_reference:.2f}"],
-        ["Progetti Tecnici", f"{data.category_project:.2f}"],
-        ["TOTALE TECNICO", f"{data.technical_score:.2f}"],
-    ]
-    t_categories = Table(category_data, colWidths=[200, 150])
-    t_categories.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7c3aed")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                ("BACKGROUND", (0, 5), (-1, 5), colors.HexColor("#e9d5ff")),
-                ("FONTNAME", (0, 5), (-1, 5), "Helvetica-Bold"),
-                ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ]
-        )
-    )
-    story.append(t_categories)
-    story.append(Spacer(1, 20))
-
-    # Score Distribution Chart with REAL Monte Carlo data
-    plt.figure(figsize=(6, 3))
-    plt.hist(
-        score_distribution,  # ✅ REAL DATA from Monte Carlo
-        bins=15,
-        color="skyblue",
-        alpha=0.7,
-        edgecolor='black'
-    )
-    plt.axvline(
-        data.total_score,
-        color="red",
-        linestyle="dashed",
-        linewidth=2,
-        label="Il Tuo Score",
-    )
-    plt.title(f"Distribuzione Probabilistica Score (Monte Carlo {iterations} iter.)")
-    plt.xlabel("Punti Totali")
-    plt.ylabel("Frequenza")
-    plt.legend()
-    plt.grid(alpha=0.3)
-
-    chart_buffer = io.BytesIO()
-    plt.savefig(chart_buffer, format="png", dpi=150, bbox_inches="tight")
-    plt.close()
-    chart_buffer.seek(0)
-    story.append(RLImage(chart_buffer, width=400, height=200))
-    story.append(Spacer(1, 20))
-
-    # Statistics Table with REAL data
-    story.append(Paragraph("Statistiche Monte Carlo (500 iterazioni)", styles["Heading2"]))
-    stats_data = [
-        ["Metrica", "Valore"],
-        ["Score Medio", f"{np.mean(score_distribution):.2f}"],
-        ["Score Minimo", f"{np.min(score_distribution):.2f}"],
-        ["Score Massimo", f"{np.max(score_distribution):.2f}"],
-        ["Deviazione Standard", f"{np.std(score_distribution):.2f}"],
-        ["Percentile 25°", f"{np.percentile(score_distribution, 25):.2f}"],
-        ["Percentile 75°", f"{np.percentile(score_distribution, 75):.2f}"],
-    ]
-    t_stats = Table(stats_data, colWidths=[200, 150])
-    t_stats.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ]
-        )
-    )
-    story.append(t_stats)
 
     logger.info(f"PDF export completed for lot: {data.lot_key}")
-    doc.build(story)
-    buffer.seek(0)
+
     return StreamingResponse(
         buffer,
         media_type="application/pdf",
