@@ -8,8 +8,7 @@ import ScoreGauges from '../features/simulation/components/ScoreGauges';
 import SimulationChart from '../features/simulation/components/SimulationChart';
 import { useConfig } from '../features/config/context/ConfigContext';
 import { useSimulation } from '../features/simulation/context/SimulationContext';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { API_URL } from '../utils/api';
 
 export default function Dashboard() {
     const { t } = useTranslation();

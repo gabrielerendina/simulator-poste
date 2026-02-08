@@ -1,31 +1,51 @@
+# Simulator Poste - Render.com Deployment Configuration
+#
+# DEPLOYMENT STEPS:
+# 1. Connect this repo to Render.com
+# 2. Deploy services (backend deploys first due to dependency)
+# 3. After backend is live, copy its URL and set VITE_API_URL in frontend
+# 4. After frontend is live, copy its URL and set FRONTEND_URL in backend
+# 5. Redeploy both services
+#
+# Example URLs after deployment:
+# - Backend: https://simulator-poste-backend.onrender.com
+# - Frontend: https://simulator-poste-frontend.onrender.com
+
 services:
   # Backend FastAPI
   - type: web
     name: simulator-poste-backend
-    env: docker
+    runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
+    plan: starter  # Required for persistent disk ($7/month)
+    disk:
+      name: sqlite-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: ENVIRONMENT
         value: production
       - key: PORT
-        value: 8000
+        value: "8000"
       - key: DATABASE_URL
-        value: sqlite:///./simulator_poste.db
+        value: sqlite:////data/simulator_poste.db
       - key: OIDC_ISSUER
         value: https://asojzafbi.accounts.ondemand.com
       - key: OIDC_CLIENT_ID
         value: c763a5f1-287c-4115-93bc-61e06b1bd7a3
       - key: OIDC_AUDIENCE
         value: c763a5f1-287c-4115-93bc-61e06b1bd7a3
+      # REQUIRED: Set this after frontend deployment
+      # Example: https://simulator-poste-frontend.onrender.com
       - key: FRONTEND_URL
-        sync: false  # Will be set after frontend is created
-    healthCheckPath: /api/config
+        sync: false
+    healthCheckPath: /health
 
   # Frontend Static Site
   - type: web
     name: simulator-poste-frontend
-    env: static
+    runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
     envVars:
@@ -33,12 +53,13 @@ services:
         value: https://asojzafbi.accounts.ondemand.com
       - key: VITE_OIDC_CLIENT_ID
         value: c763a5f1-287c-4115-93bc-61e06b1bd7a3
+      # REQUIRED: Set this after backend deployment
+      # Example: https://simulator-poste-backend.onrender.com
+      # Note: /api suffix is added automatically by the frontend
       - key: VITE_API_URL
-        sync: false  # Will be set after backend is created
-      - key: VITE_OIDC_REDIRECT_URI
-        sync: false  # Will be set after frontend URL is known
-      - key: VITE_OIDC_POST_LOGOUT_REDIRECT_URI
-        sync: false  # Will be set after frontend URL is known
+        sync: false
+      # OIDC redirects use window.location.origin as fallback
+      # Only set these if you need custom redirect URLs
     headers:
       - path: /*
         name: X-Frame-Options
@@ -46,6 +67,12 @@ services:
       - path: /*
         name: X-Content-Type-Options
         value: nosniff
+      - path: /*
+        name: X-XSS-Protection
+        value: 1; mode=block
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
     routes:
       - type: rewrite
         source: /*

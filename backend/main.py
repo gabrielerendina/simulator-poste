@@ -73,6 +73,20 @@ app = FastAPI(
 
 # --- CORS Configuration (Environment-based) ---
 
+def normalize_origin_url(url: str) -> str:
+    """
+    Normalize an origin URL to ensure it has proper protocol.
+    Handles Render's fromService which may return just hostname.
+    """
+    if not url:
+        return url
+    url = url.strip()
+    # If it's just a hostname (no protocol), add https://
+    if not url.startswith('http://') and not url.startswith('https://'):
+        return f'https://{url}'
+    return url
+
+
 def get_allowed_origins():
     """
     Get allowed CORS origins based on environment
@@ -86,13 +100,15 @@ def get_allowed_origins():
         if not production_url:
             logger.warning("FRONTEND_URL not set in production environment")
             return []
-        logger.info(f"Production CORS: {production_url}")
-        return [production_url]
+        normalized_url = normalize_origin_url(production_url)
+        logger.info(f"Production CORS: {normalized_url}")
+        return [normalized_url]
 
     elif env == "staging":
         # Staging: Allow staging domain + localhost for testing
         staging_url = os.getenv("FRONTEND_URL", "https://staging.simulator-poste.example.com")
-        origins = [staging_url, "http://localhost:5173"]
+        normalized_url = normalize_origin_url(staging_url)
+        origins = [normalized_url, "http://localhost:5173"]
         logger.info(f"Staging CORS: {origins}")
         return origins
 

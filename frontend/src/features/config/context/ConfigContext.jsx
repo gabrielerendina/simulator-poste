@@ -1,8 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { logger } from '../../../utils/logger';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { API_URL } from '../../../utils/api';
 
 const ConfigContext = createContext(null);
 

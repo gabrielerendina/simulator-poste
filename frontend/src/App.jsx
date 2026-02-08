@@ -15,8 +15,7 @@ import LogoutButton from './components/LogoutButton';
 import { ConfigProvider, useConfig } from './features/config/context/ConfigContext';
 import { SimulationProvider, useSimulation } from './features/simulation/context/SimulationContext';
 import { ToastProvider, useToast } from './shared/components/ui/Toast';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { API_URL } from './utils/api';
 
 // Main app content (to be wrapped with auth)
 function AppContent() {
