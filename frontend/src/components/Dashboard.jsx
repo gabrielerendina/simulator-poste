@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Target, Loader2 } from 'lucide-react';
+import { Target, Loader2, FileSearch } from 'lucide-react';
 import axios from 'axios';
 import { formatCurrency, formatNumber } from '../utils/formatters';
 import { SkeletonGauge, SkeletonCard } from '../shared/components/ui/Skeleton';
@@ -9,6 +9,7 @@ import SimulationChart from '../features/simulation/components/SimulationChart';
 import { useConfig } from '../features/config/context/ConfigContext';
 import { useSimulation } from '../features/simulation/context/SimulationContext';
 import { API_URL } from '../utils/api';
+import CertVerification from './CertVerification';
 
 export default function Dashboard() {
     const { t } = useTranslation();
@@ -29,6 +30,9 @@ export default function Dashboard() {
     const lotData = config?.[selectedLot];
     const [monteCarlo, setMonteCarlo] = useState(null);
     const [exportLoading, setExportLoading] = useState(false);
+    
+    // Certificate verification dialog
+    const [showCertVerification, setShowCertVerification] = useState(false);
 
     // Optimizer results state
     const [optimizerResults, setOptimizerResults] = useState(null);
@@ -459,6 +463,22 @@ export default function Dashboard() {
                     </table>
                 </div>
             </div>
+
+            {/* Certificate Verification Button */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <button
+                    onClick={() => setShowCertVerification(true)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors font-medium"
+                >
+                    <FileSearch className="w-5 h-5" />
+                    {t('dashboard.verify_certifications') || 'Verifica Certificazioni PDF'}
+                </button>
+            </div>
+
+            {/* Certificate Verification Dialog */}
+            {showCertVerification && (
+                <CertVerification onClose={() => setShowCertVerification(false)} />
+            )}
 
         </div>
     );

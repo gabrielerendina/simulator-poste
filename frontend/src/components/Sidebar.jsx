@@ -1,11 +1,13 @@
-import { Sliders, Settings, X } from 'lucide-react';
+import { Sliders, Settings, X, FileSearch } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../utils/formatters';
 import { useConfig } from '../features/config/context/ConfigContext';
 import { useSimulation } from '../features/simulation/context/SimulationContext';
 
 export default function Sidebar({
-    onClose
+    onClose,
+    onNavigate,
+    currentView
 }) {
     const { t } = useTranslation();
 
@@ -144,6 +146,24 @@ export default function Sidebar({
                         </div>
                     </div>
                 )}
+            </div>
+
+            {/* Bottom Section - Cert Verification */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50">
+                <button
+                    onClick={() => {
+                        if (onNavigate) onNavigate('certs');
+                        if (window.innerWidth < 768 && onClose) onClose();
+                    }}
+                    className={`w-full flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all ${
+                        currentView === 'certs'
+                            ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200'
+                            : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                >
+                    <FileSearch className="w-5 h-5" />
+                    <span>Verifica Certificazioni</span>
+                </button>
             </div>
         </div>
     );

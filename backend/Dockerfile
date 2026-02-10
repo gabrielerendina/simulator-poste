@@ -4,11 +4,14 @@ FROM python:3.10-slim
 # Imposta la directory di lavoro
 WORKDIR /app
 
-# Installa dipendenze di sistema necessarie per compilare psutil
+# Installa dipendenze di sistema necessarie per compilare psutil e OCR
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
     curl \
+    tesseract-ocr \
+    tesseract-ocr-ita \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copia le dipendenze e installale

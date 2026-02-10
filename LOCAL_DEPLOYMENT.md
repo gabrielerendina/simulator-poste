@@ -108,6 +108,46 @@ docker-compose down
 docker-compose down -v
 ```
 
+## Certificate Verification (OCR)
+
+The application includes a certificate verification feature that uses OCR to extract data from PDF certificates.
+
+### Local Development (without Docker)
+
+Point directly to your local folder path in the UI.
+
+### Docker Deployment
+
+The docker-compose.yml mounts `/Users/gabriele.rendina` as `/host_home` (read-only).
+
+In the UI, use paths like:
+```
+/host_home/path/to/your/certs
+```
+
+For example, if your certificates are in `/Users/gabriele.rendina/Documents/Certs`, enter:
+```
+/host_home/Documents/Certs
+```
+
+### Remote SharePoint Access
+
+For SharePoint folders, you have two options:
+
+1. **rclone mount** (recommended): Mount SharePoint as a local folder, then mount that into Docker
+   ```bash
+   # Install rclone and configure SharePoint remote
+   rclone config  # Set up SharePoint remote as "sharepoint:"
+   
+   # Mount SharePoint locally
+   rclone mount sharepoint:Documents/Certificates ~/sharepoint-certs &
+   
+   # Use that path in Docker
+   CERTS_FOLDER=~/sharepoint-certs docker-compose up -d
+   ```
+
+2. **OneDrive sync**: Use OneDrive client to sync SharePoint folders locally, then mount the synced folder
+
 ## Database
 
 The application uses SQLite stored at `backend/simulator_poste.db`.

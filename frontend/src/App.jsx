@@ -6,6 +6,7 @@ import TechEvaluator from './components/TechEvaluator';
 import Dashboard from './components/Dashboard';
 import ConfigPage from './components/ConfigPage';
 import MasterDataConfig from './components/MasterDataConfig';
+import CertVerificationPage from './components/CertVerificationPage';
 import { Settings, Menu, X, Save } from 'lucide-react';
 import { logger } from './utils/logger';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -39,7 +40,7 @@ function AppContent() {
     setSimulationData
   } = useSimulation();
 
-  const [view, setView] = useState('dashboard'); // dashboard, config, master
+  const [view, setView] = useState('dashboard'); // dashboard, config, master, certs
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar state
   const lastLoadedLot = useRef(null); // Track last loaded lot to prevent loops
@@ -260,6 +261,8 @@ function AppContent() {
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          onNavigate={setView}
+          currentView={view}
         />
       </div>
 
@@ -294,7 +297,7 @@ function AppContent() {
                 <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full shadow-sm">
                   <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    {view === 'dashboard' ? t('common.home') : view === 'config' ? t('common.gara_lotto') : t('common.master_data')}
+                    {view === 'dashboard' ? t('common.home') : view === 'config' ? t('common.gara_lotto') : view === 'certs' ? 'Certificazioni' : t('common.master_data')}
                   </span>
                 </div>
               </div>
@@ -372,6 +375,8 @@ function AppContent() {
           />
         ) : view === 'master' ? (
           <MasterDataConfig />
+        ) : view === 'certs' ? (
+          <CertVerificationPage />
         ) : (
           <div className="flex-1 overflow-auto p-3 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
             <div className="lg:col-span-7 space-y-4 md:space-y-6">

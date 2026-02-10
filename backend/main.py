@@ -1237,6 +1237,276 @@ def export_pdf(data: schemas.ExportPDFRequest, db: Session = Depends(get_db)):
     )
 
 
+# --- CERTIFICATE VERIFICATION ENDPOINTS ---
+
+@api_router.get("/verify-certs/status")
+def get_cert_verification_status():
+    """
+    Check if OCR dependencies are available for certificate verification.
+    Returns status of pytesseract, pdf2image, Pillow, and poppler.
+    """
+    try:
+        from services.cert_verification_service import check_ocr_available
+        return check_ocr_available()
+    except ImportError as e:
+        return {
+            "ocr_available": False,
+            "error": str(e),
+            "message": "OCR dependencies not installed. Run: pip install pytesseract pdf2image Pillow"
+        }
+
+
+@api_router.post("/verify-certs")
+def verify_certificates(
+    folder_path: str,
+    lot_key: str = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Verify all PDF certificates in a folder using OCR.
+    
+    Args:
+        folder_path: Absolute path to the folder containing PDF certificates
+        lot_key: Optional lot key to get expected cert names from Requisiti Tecnici
+    
+    Returns:
+        Verification results with summary and per-file details
+    """
+    # Normalize path: strip quotes, expand user, normalize, map /Users/<user>/... -> /host_home/<rest> if exists (Docker)
+    raw_path = folder_path.strip().strip("'").strip('"').strip()
+    normalized_path = os.path.normpath(os.path.expanduser(raw_path)) if raw_path else ""
+    if normalized_path.startswith("/Users/"):
+        parts = normalized_path.split("/", 3)  # ["", "Users", "user", "rest"]
+        if len(parts) >= 4:
+            candidate = "/host_home/" + parts[3]
+            if os.path.exists(candidate):
+                normalized_path = candidate
+    folder_path = normalized_path
+    
+    logger.info(f"Certificate verification requested for folder: {folder_path}, lot_key: {lot_key}")
+    
+    # Build mapping of req_id -> expected cert names from lot config
+    expected_certs_map = {}
+    if lot_key:
+        lot_config = crud.get_lot_config(db, lot_key)
+        if lot_config and lot_config.reqs:
+            for req in lot_config.reqs:
+                req_id = req.get("id", "")
+                # Get selected_prof_certs as expected cert names
+                selected_certs = req.get("selected_prof_certs", [])
+                if selected_certs:
+                    expected_certs_map[req_id] = selected_certs
+    
+    try:
+        from services.cert_verification_service import CertVerificationService, OCR_AVAILABLE
+        
+        if not OCR_AVAILABLE:
+            raise HTTPException(
+                status_code=503,
+                detail="OCR dependencies not available. Install with: pip install pytesseract pdf2image Pillow"
+            )
+        
+        service = CertVerificationService()
+        results = service.verify_folder(folder_path, req_filter=None)
+        
+        # Enrich results with expected cert names from lot config
+        if expected_certs_map and results.get("results"):
+            for r in results["results"]:
+                req_code = r.get("req_code", "")
+                if req_code and req_code in expected_certs_map:
+                    r["expected_cert_names"] = expected_certs_map[req_code]
+        
+        logger.info(
+            f"Certificate verification completed",
+            extra={
+                "folder": folder_path,
+                "total": results.get("summary", {}).get("total", 0),
+                "valid": results.get("summary", {}).get("valid", 0)
+            }
+        )
+        
+        return results
+        
+    except ImportError as e:
+        logger.error(f"OCR import error: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"OCR dependencies not available: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Certificate verification error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Certificate verification failed: {str(e)}"
+        )
+
+
+@api_router.post("/verify-certs/stream")
+def verify_certificates_stream(
+    folder_path: str,
+    lot_key: str = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Stream certificate verification progress using Server-Sent Events (SSE).
+    Sends progress events for each file processed, then a final 'done' event with complete results.
+    """
+    import json
+    from pathlib import Path
+    
+    # Normalize path (same as regular endpoint)
+    raw_path = folder_path.strip().strip("'").strip('"').strip()
+    normalized_path = os.path.normpath(os.path.expanduser(raw_path)) if raw_path else ""
+    if normalized_path.startswith("/Users/"):
+        parts = normalized_path.split("/", 3)
+        if len(parts) >= 4:
+            candidate = "/host_home/" + parts[3]
+            if os.path.exists(candidate):
+                normalized_path = candidate
+    folder_path = normalized_path
+    
+    # Build expected_certs_map from lot config
+    expected_certs_map = {}
+    if lot_key:
+        lot_config = crud.get_lot_config(db, lot_key)
+        if lot_config and lot_config.reqs:
+            for req in lot_config.reqs:
+                req_id = req.get("id", "")
+                selected_certs = req.get("selected_prof_certs", [])
+                if selected_certs:
+                    expected_certs_map[req_id] = selected_certs
+    
+    def generate():
+        try:
+            from services.cert_verification_service import CertVerificationService, OCR_AVAILABLE
+            
+            if not OCR_AVAILABLE:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'OCR not available'})}\n\n"
+                return
+            
+            folder = Path(folder_path)
+            if not folder.exists():
+                yield f"data: {json.dumps({'type': 'error', 'message': f'Folder not found: {folder_path}'})}\n\n"
+                return
+            
+            # Find all PDFs
+            pdf_files = list(folder.rglob("*.pdf")) + list(folder.rglob("*.PDF"))
+            total = len(pdf_files)
+            
+            if total == 0:
+                yield f"data: {json.dumps({'type': 'done', 'results': {'success': True, 'warning': 'No PDF files found', 'results': [], 'summary': {'total': 0}}})}\n\n"
+                return
+            
+            # Send initial progress
+            yield f"data: {json.dumps({'type': 'start', 'total': total})}\n\n"
+            
+            service = CertVerificationService()
+            results = []
+            
+            for i, pdf_path in enumerate(pdf_files):
+                # Send progress update
+                yield f"data: {json.dumps({'type': 'progress', 'current': i + 1, 'total': total, 'filename': pdf_path.name})}\n\n"
+                
+                # Process file
+                result = service.verify_certificate(str(pdf_path))
+                result_dict = result.to_dict()
+                
+                # Enrich with expected cert names
+                req_code = result_dict.get("req_code", "")
+                if req_code and req_code in expected_certs_map:
+                    result_dict["expected_cert_names"] = expected_certs_map[req_code]
+                
+                results.append(result_dict)
+            
+            # Build summary
+            summary = {
+                "total": len(results),
+                "valid": sum(1 for r in results if r["status"] == "valid"),
+                "expired": sum(1 for r in results if r["status"] == "expired"),
+                "mismatch": sum(1 for r in results if r["status"] == "mismatch"),
+                "unreadable": sum(1 for r in results if r["status"] == "unreadable"),
+                "error": sum(1 for r in results if r["status"] == "error"),
+                "by_requirement": {},
+                "by_resource": {},
+            }
+            
+            for r in results:
+                req = r["req_code"]
+                if req not in summary["by_requirement"]:
+                    summary["by_requirement"][req] = {"total": 0, "valid": 0}
+                summary["by_requirement"][req]["total"] += 1
+                if r["status"] == "valid":
+                    summary["by_requirement"][req]["valid"] += 1
+                    
+                res = r["resource_name"]
+                if res not in summary["by_resource"]:
+                    summary["by_resource"][res] = {"total": 0, "valid": 0}
+                summary["by_resource"][res]["total"] += 1
+                if r["status"] == "valid":
+                    summary["by_resource"][res]["valid"] += 1
+            
+            final_result = {
+                "success": True,
+                "folder": folder_path,
+                "results": results,
+                "summary": summary
+            }
+            
+            yield f"data: {json.dumps({'type': 'done', 'results': final_result})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"Streaming cert verification error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+@api_router.post("/verify-certs/single")
+def verify_single_certificate(pdf_path: str):
+    """
+    Verify a single PDF certificate using OCR.
+    
+    Args:
+        pdf_path: Absolute path to the PDF file
+    
+    Returns:
+        Verification result with extracted data
+    """
+    logger.info(f"Single certificate verification requested: {pdf_path}")
+    
+    try:
+        from services.cert_verification_service import CertVerificationService, OCR_AVAILABLE
+        
+        if not OCR_AVAILABLE:
+            raise HTTPException(
+                status_code=503,
+                detail="OCR dependencies not available"
+            )
+        
+        import os
+        if not os.path.exists(pdf_path):
+            raise HTTPException(status_code=404, detail=f"File not found: {pdf_path}")
+        
+        service = CertVerificationService()
+        result = service.verify_certificate(pdf_path)
+        
+        return result.to_dict()
+        
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"Certificate verification error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Register API router
 app.include_router(api_router)
 

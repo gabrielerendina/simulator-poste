@@ -5,6 +5,8 @@ services:
       - "8000:8000"
     volumes:
       - ./backend/simulator_poste.db:/app/simulator_poste.db
+      # Mount user home for certificate verification (read-only)
+      - /Users/gabriele.rendina:/host_home:ro
     env_file:
       - .env
     environment:
@@ -27,7 +29,8 @@ services:
     build:
       context: ./frontend
       args:
-        - VITE_API_URL=http://localhost:8000/api
+        # Use /api (relative) so nginx proxies to backend internally
+        - VITE_API_URL=/api
         - VITE_OIDC_AUTHORITY=https://asojzafbi.accounts.ondemand.com
         - VITE_OIDC_CLIENT_ID=c763a5f1-287c-4115-93bc-61e06b1bd7a3
         - VITE_OIDC_REDIRECT_URI=http://localhost:5173/callback
