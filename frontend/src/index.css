@@ -11,7 +11,7 @@ body {
 
 /* Custom Range Slider Styling - Touch Friendly */
 input[type="range"] {
-  @apply accent-blue-600 cursor-pointer;
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
