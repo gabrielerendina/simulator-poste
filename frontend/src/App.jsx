@@ -288,13 +288,13 @@ function AppContent() {
                 <Menu className="w-6 h-6 text-slate-600" />
               </button>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
                 <img src="/poste-italiane-logo.svg" alt={t('app.poste_italiane_logo')} className="h-6 md:h-8 object-contain" />
-                <div className="hidden sm:block w-px h-8 bg-slate-200"></div>
-                <h1 className="text-base md:text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <div className="hidden md:block w-px h-8 bg-slate-200"></div>
+                <h1 className="hidden md:block text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   {t('app.title')}
                 </h1>
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full shadow-sm">
+                <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full shadow-sm">
                   <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     {view === 'dashboard' ? t('common.home') : view === 'config' ? t('common.gara_lotto') : view === 'certs' ? 'Certificazioni' : t('common.master_data')}
