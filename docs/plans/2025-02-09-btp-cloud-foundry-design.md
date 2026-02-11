@@ -12,7 +12,7 @@ Deployare l'applicazione simulator-poste su SAP BTP Cloud Foundry minimizzando g
 ## Decisioni Chiave
 
 | Aspetto | Decisione | Motivazione |
-|---------|-----------|-------------|
+| --- | --- | --- |
 | Database | PostgreSQL (BTP managed) | SQLAlchemy già supportato, CF è stateless |
 | Frontend | nginx-buildpack | Migliore controllo su routing e proxy API |
 | Auth | OIDC diretto con SAP IAS | Zero modifiche al codice auth esistente |
@@ -26,13 +26,14 @@ Deployare l'applicazione simulator-poste su SAP BTP Cloud Foundry minimizzando g
 > **Motivo**: Il Python buildpack di CF non include Tesseract OCR e Poppler (necessari per `pytesseract` e `pdf2image`). L'installazione di pacchetti di sistema non è supportata nei buildpack standard.
 >
 > **Workaround futuri**:
+>
 > - Usare un Docker container custom (CF supporta Docker, richiede configurazione extra)
 > - Integrare un servizio OCR esterno (es. SAP Document Information Extraction, Google Vision API)
 > - Mantenere la funzionalità OCR solo su deployment Docker (locale/Render.com)
 
 ## Architettura
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                         SAP BTP Cloud Foundry                             │
 ├──────────────────────────────────────────────────────────────────────────┤
@@ -172,7 +173,7 @@ applications:
 
 ### 3. `backend/requirements-cf.txt` - Requisiti senza OCR
 
-```txt
+```text
 fastapi==0.128.0
 uvicorn==0.40.0
 pydantic==2.12.5
@@ -197,13 +198,13 @@ cairosvg==2.8.2
 
 ### 4. `backend/runtime.txt`
 
-```
+```text
 python-3.11.x
 ```
 
 ### 5. `backend/Procfile` - Gunicorn startup
 
-```
+```text
 web: gunicorn main:app --bind 0.0.0.0:$PORT --workers 2 --worker-class uvicorn.workers.UvicornWorker --timeout 120 --access-logfile - --error-logfile -
 ```
 
@@ -224,7 +225,7 @@ applications:
 
 ### 7. `frontend/Staticfile` - nginx-buildpack config
 
-```
+```text
 pushstate: enabled
 force_https: true
 ```
@@ -287,7 +288,7 @@ http {
 
 ### 9. `frontend/mime.types` - MIME types per nginx
 
-```
+```text
 types {
     text/html                             html htm shtml;
     text/css                              css;
@@ -475,13 +476,14 @@ export default defineConfig(({ mode }) => ({
 
 Aggiungere alle Redirect URIs dell'applicazione OIDC esistente:
 
-```
+```text
 https://simulator-poste-frontend.cfapps.eu10.hana.ondemand.com/callback
 https://simulator-poste-frontend.cfapps.eu10.hana.ondemand.com
 ```
 
 Post-Logout Redirect URIs:
-```
+
+```text
 https://simulator-poste-frontend.cfapps.eu10.hana.ondemand.com
 ```
 
@@ -492,7 +494,7 @@ https://simulator-poste-frontend.cfapps.eu10.hana.ondemand.com
 ### Backend
 
 | Variabile | Valore | Note |
-|-----------|--------|------|
+| --- | --- | --- |
 | `ENVIRONMENT` | `production` | Abilita logging production |
 | `OCR_ENABLED` | `false` | Disabilita OCR (non supportato su CF) |
 | `OIDC_ISSUER` | `https://asojzafbi.accounts.ondemand.com` | SAP IAS issuer |
@@ -503,7 +505,7 @@ https://simulator-poste-frontend.cfapps.eu10.hana.ondemand.com
 ### Frontend (build-time)
 
 | Variabile | Valore | Note |
-|-----------|--------|------|
+| --- | --- | --- |
 | `VITE_API_URL` | `/api` | Relative path, nginx proxies to backend |
 | `VITE_OIDC_AUTHORITY` | `https://asojzafbi.accounts.ondemand.com` | SAP IAS |
 | `VITE_OIDC_CLIENT_ID` | `c763a5f1-287c-4115-93bc-61e06b1bd7a3` | OIDC client |
@@ -584,7 +586,7 @@ psql -h localhost -p 5432 -U ${PG_USER} -d ${PG_DB} < data_export.sql
 ## Impatto Totale
 
 | Area | File Nuovi | File Modificati | Righe di Codice |
-|------|-----------|-----------------|-----------------|
+| --- | --- | --- | --- |
 | Backend | 3 (`runtime.txt`, `Procfile`, `manifest.yml`, `requirements-cf.txt`) | 2 (`database.py`, `main.py`) | ~80 righe |
 | Frontend | 5 (`Staticfile`, `nginx.conf`, `mime.types`, `buildpack.yml`, `manifest.yml`) | 2 (`package.json`, `vite.config.js`) | ~120 righe |
 | Root | 1 (`mta.yaml`) | 0 | ~70 righe |
@@ -593,7 +595,7 @@ psql -h localhost -p 5432 -U ${PG_USER} -d ${PG_DB} < data_export.sql
 ## Confronto Ambienti
 
 | Aspetto | Docker (locale) | Render.com | BTP Cloud Foundry |
-|---------|----------------|------------|-------------------|
+| --- | --- | --- | --- |
 | Database | SQLite | SQLite (persistent disk) | PostgreSQL (managed) |
 | OCR | ✅ Funzionante | ✅ Funzionante | ❌ Disabilitato |
 | Auth | SAP IAS OIDC | SAP IAS OIDC | SAP IAS OIDC |
@@ -604,10 +606,12 @@ psql -h localhost -p 5432 -U ${PG_USER} -d ${PG_DB} < data_export.sql
 ## Checklist Implementazione
 
 ### Fase 1: Preparazione Branch
+
 - [ ] Creare branch `feature/btp-cloud-foundry`
 - [ ] Verificare accesso CF: `cf target`
 
 ### Fase 2: Backend
+
 - [ ] Creare `backend/requirements-cf.txt` (senza OCR packages)
 - [ ] Creare `backend/runtime.txt` con `python-3.11.x`
 - [ ] Creare `backend/Procfile` per Gunicorn
@@ -617,6 +621,7 @@ psql -h localhost -p 5432 -U ${PG_USER} -d ${PG_DB} < data_export.sql
 - [ ] Testare localmente con `DATABASE_URL` PostgreSQL
 
 ### Fase 3: Frontend
+
 - [ ] Creare `frontend/Staticfile`
 - [ ] Creare `frontend/nginx.conf` con proxy configuration
 - [ ] Creare `frontend/mime.types`
@@ -626,16 +631,19 @@ psql -h localhost -p 5432 -U ${PG_USER} -d ${PG_DB} < data_export.sql
 - [ ] Verificare build: `npm run build:cf`
 
 ### Fase 4: Root
+
 - [ ] Creare `mta.yaml`
 - [ ] Verificare MBT installato: `mbt --version`
 
 ### Fase 5: Deployment
+
 - [ ] Login CF: `cf login`
 - [ ] Creare PostgreSQL service: `cf create-service postgresql-db trial simulator-poste-db`
 - [ ] Build MTA: `mbt build`
 - [ ] Deploy: `cf deploy mta_archives/simulator-poste_*.mtar`
 
 ### Fase 6: Post-Deploy
+
 - [ ] Verificare apps: `cf apps`
 - [ ] Controllare logs backend: `cf logs simulator-poste-backend --recent`
 - [ ] Aggiungere redirect URIs in SAP IAS
@@ -644,6 +652,7 @@ psql -h localhost -p 5432 -U ${PG_USER} -d ${PG_DB} < data_export.sql
 - [ ] Verificare messaggio OCR disabilitato nella UI
 
 ### Fase 7: Finalize
+
 - [ ] Documentare URLs finali
 - [ ] Merge in main (opzionale)
 - [ ] Setup CI/CD pipeline (opzionale)
@@ -653,7 +662,7 @@ psql -h localhost -p 5432 -U ${PG_USER} -d ${PG_DB} < data_export.sql
 ### Errori Comuni
 
 | Errore | Causa | Soluzione |
-|--------|-------|-----------|
+| --- | --- | --- |
 | `502 Bad Gateway` | Backend non risponde | Verificare logs: `cf logs simulator-poste-backend --recent` |
 | `VCAP_SERVICES not found` | Service non bound | `cf bind-service simulator-poste-backend simulator-poste-db` |
 | `Connection refused /api` | Proxy nginx mal configurato | Verificare `BACKEND_URL` in frontend env |
@@ -697,6 +706,7 @@ cf service-key simulator-poste-db mykey
 Se in futuro si volesse abilitare OCR su BTP, le opzioni sono:
 
 1. **CF Docker Support**
+
    ```yaml
    # manifest.yml con Docker
    applications:
@@ -704,6 +714,7 @@ Se in futuro si volesse abilitare OCR su BTP, le opzioni sono:
        docker:
          image: ghcr.io/raistlin82/simulator-poste-backend:latest
    ```
+
    Richiede: Docker image con Tesseract preinstallato, CF Docker support abilitato
 
 2. **SAP Document Information Extraction**
@@ -717,7 +728,7 @@ Se in futuro si volesse abilitare OCR su BTP, le opzioni sono:
 ## Appendice: URL Finali (template)
 
 | Servizio | URL |
-|----------|-----|
+| --- | --- |
 | Frontend | `https://simulator-poste-frontend.cfapps.eu10.hana.ondemand.com` |
 | Backend | `https://simulator-poste-backend.cfapps.eu10.hana.ondemand.com` |
 | API Health | `https://simulator-poste-backend.cfapps.eu10.hana.ondemand.com/health` |

@@ -11,7 +11,7 @@ Deploy Simulator Poste to Render.com for public access.
 ## Cost Estimate
 
 | Service | Plan | Cost |
-|---------|------|------|
+| --- | --- | --- |
 | Backend | Starter | $7/month |
 | Frontend | Static (Free) | $0/month |
 | **Total** | | **$7/month** |
@@ -45,9 +45,11 @@ After initial deployment, you need to set cross-service URLs:
 1. Go to `simulator-poste-backend` service
 2. Navigate to **Environment** tab
 3. Set `FRONTEND_URL`:
-   ```
+
+   ```text
    https://simulator-poste-frontend.onrender.com
    ```
+
    (Use your actual frontend URL)
 
 #### Frontend Configuration
@@ -55,9 +57,11 @@ After initial deployment, you need to set cross-service URLs:
 1. Go to `simulator-poste-frontend` service
 2. Navigate to **Environment** tab
 3. Set `VITE_API_URL`:
-   ```
+
+   ```text
    https://simulator-poste-backend.onrender.com
    ```
+
    (Use your actual backend URL - `/api` suffix is added automatically)
 
 ### Step 4: Redeploy Services
@@ -73,12 +77,15 @@ If using SAP IAS authentication, add your Render URLs to the OIDC application:
 1. Go to SAP IAS Admin Console
 2. Find your OIDC application
 3. Add redirect URIs:
-   ```
+
+   ```text
    https://simulator-poste-frontend.onrender.com/callback
    https://simulator-poste-frontend.onrender.com/silent-renew.html
    ```
+
 4. Add post-logout redirect URI:
-   ```
+
+   ```text
    https://simulator-poste-frontend.onrender.com
    ```
 
@@ -86,14 +93,14 @@ If using SAP IAS authentication, add your Render URLs to the OIDC application:
 
 After deployment:
 
-- **Frontend**: https://simulator-poste-frontend.onrender.com
-- **Backend API**: https://simulator-poste-backend.onrender.com/api
-- **API Docs**: https://simulator-poste-backend.onrender.com/docs
-- **Health Check**: https://simulator-poste-backend.onrender.com/health
+- **Frontend**: `https://simulator-poste-frontend.onrender.com`
+- **Backend API**: `https://simulator-poste-backend.onrender.com/api`
+- **API Docs**: `https://simulator-poste-backend.onrender.com/docs`
+- **Health Check**: `https://simulator-poste-backend.onrender.com/health`
 
 ## Architecture on Render
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                        Internet                              │
 └─────────────────────────┬───────────────────────────────────┘
@@ -137,6 +144,7 @@ If frontend can't reach backend:
 SQLite database is stored on a persistent disk at `/data/simulator_poste.db`.
 
 To reset the database:
+
 1. Go to backend service → **Disks**
 2. Delete the disk
 3. Redeploy (a new disk will be created)

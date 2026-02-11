@@ -31,7 +31,7 @@ Simulator Poste è uno strumento per simulare e ottimizzare le offerte nelle gar
 
 ### Flusso di Lavoro Tipico
 
-```
+```text
 1. Seleziona/Configura Gara → 2. Inserisci Offerta Tecnica → 3. Simula Sconto → 4. Analizza Competitor → 5. Export PDF
 ```
 
@@ -73,7 +73,7 @@ L'interfaccia è divisa in tre aree principali:
 Contiene 3 tab principali:
 
 | Tab | Descrizione |
-|-----|-------------|
+| --- | --- |
 | **Dashboard** | Gauge punteggi, grafico simulazione, analisi strategica |
 | **Valutazione Tecnica** | Input per certificazioni e requisiti |
 | **Configurazione** | Modifica parametri gara (admin) |
@@ -81,6 +81,7 @@ Contiene 3 tab principali:
 ### 3.3 Navigazione Tab
 
 Clicca sui tab in alto per navigare tra le sezioni:
+
 - 📊 **Dashboard** - Visualizza risultati
 - ⚙️ **Valutazione** - Inserisci dati tecnici
 - 🔧 **Config** - Configura gara
@@ -99,7 +100,7 @@ Clicca sui tab in alto per navigare tra le sezioni:
 ### 4.2 Parametri Base
 
 | Campo | Descrizione |
-|-------|-------------|
+| --- | --- |
 | **Nome Lotto** | Identificativo della gara |
 | **Importo Base** | Valore economico della gara in € |
 | **Max Punteggio Tecnico** | Calcolato automaticamente dalla somma dei pesi gara |
@@ -190,11 +191,13 @@ Per ogni requisito di tipo "resource":
 > **Attenzione:** C non può superare R (non puoi avere più certificazioni che risorse).
 
 **Formula Punteggio:**
-```
+
+```text
 Punteggio = (2 × R) + (R × C)
 ```
 
 **Esempio:**
+
 - R = 4 risorse
 - C = 3 certificazioni totali
 - Punteggio = (2 × 4) + (4 × 3) = 8 + 12 = 20 punti
@@ -260,6 +263,7 @@ Nella Dashboard, il grafico mostra:
 - **Linea Rossa Tratteggiata**: Soglia competitore
 
 **Interpretazione:**
+
 - Quando sei sopra la linea rossa → stai vincendo
 - Quando sei sotto → stai perdendo
 
@@ -281,7 +285,7 @@ Questi valori alimentano l'ottimizzatore.
 Mostra la tua posizione attuale:
 
 | Metrica | Descrizione |
-|---------|-------------|
+| --- | --- |
 | Sconto | Il tuo sconto attuale |
 | Punteggio Totale | Tech + Econ |
 | Probabilità Vittoria | % basata su Monte Carlo |
@@ -293,13 +297,14 @@ Mostra la tua posizione attuale:
 L'ottimizzatore propone 4 scenari:
 
 | Scenario | Strategia |
-|----------|-----------|
+| --- | --- |
 | **Conservativo** | Minimo sconto per battere il competitor |
 | **Bilanciato** | Margine di sicurezza moderato |
 | **Aggressivo** | Alta probabilità, margine ridotto |
 | **Max** | Massima probabilità possibile |
 
 Per ogni scenario:
+
 - Sconto suggerito
 - Punteggio risultante
 - Probabilità di vittoria
@@ -356,7 +361,8 @@ Il PDF include:
 ### 8.3 Nome File
 
 Il file viene salvato come:
-```
+
+```text
 Report_Strategico_{NomeGara}.pdf
 ```
 
@@ -373,6 +379,7 @@ Report_Strategico_{NomeGara}.pdf
 ### Cosa significa Alpha (α) nella formula economica?
 
 Alpha controlla quanto rapidamente cresce il punteggio con lo sconto:
+
 - **α = 0.3 (default)**: Crescita morbida, premia anche piccoli sconti
 - **α = 0.5**: Crescita più ripida, premia sconti aggressivi
 - **α = 0.2**: Crescita lenta, quasi lineare
@@ -380,6 +387,7 @@ Alpha controlla quanto rapidamente cresce il punteggio con lo sconto:
 ### Come funziona Monte Carlo?
 
 La simulazione ripete 500 volte:
+
 1. Genera uno sconto competitor casuale (distribuzione normale)
 2. Genera un punteggio tecnico competitor casuale
 3. Calcola chi vince
@@ -393,6 +401,7 @@ Il punteggio raw è la somma dei punti grezzi.
 Il punteggio pesato applica la proporzione rispetto al peso gara.
 
 **Esempio:**
+
 - Raw: 28/35 punti
 - Peso gara: 10 punti
 - Pesato: (28/35) × 10 = 8 punti
@@ -413,6 +422,7 @@ Il sistema clampera automaticamente C = R.
 ### Il sistema salva i miei dati?
 
 Sì, lo stato della simulazione viene salvato automaticamente:
+
 - Sconti impostati
 - Valori tecnici inseriti
 - Certificazioni selezionate
@@ -430,6 +440,6 @@ Per aggiungere altre lingue, contattare l'amministratore.
 
 Per problemi o richieste:
 
-- **Email**: support@lutech.it
+- **Email**: `support@lutech.it`
 - **Documentazione Tecnica**: [docs/technical.md](technical.md)
 - **API Reference**: [docs/api.md](api.md)

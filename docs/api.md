@@ -10,7 +10,7 @@ Documentazione completa delle API REST del sistema Simulator Poste.
 
 ---
 
-## 📋 Indice
+## Indice
 
 - [Health & Monitoring](#health--monitoring)
 - [Configuration](#configuration)
@@ -24,9 +24,11 @@ Documentazione completa delle API REST del sistema Simulator Poste.
 ## Health & Monitoring
 
 ### GET /health
+
 Health check completo con stato del sistema.
 
 **Response 200:**
+
 ```json
 {
   "status": "healthy",
@@ -55,9 +57,11 @@ Health check completo con stato del sistema.
 ---
 
 ### GET /health/ready
+
 Probe di readiness Kubernetes. Ritorna 200 solo se l'app è pronta a servire traffico.
 
 **Response 200:**
+
 ```json
 {
   "status": "ready",
@@ -66,6 +70,7 @@ Probe di readiness Kubernetes. Ritorna 200 solo se l'app è pronta a servire tra
 ```
 
 **Response 503:**
+
 ```json
 {
   "status": "not_ready",
@@ -76,9 +81,11 @@ Probe di readiness Kubernetes. Ritorna 200 solo se l'app è pronta a servire tra
 ---
 
 ### GET /health/live
+
 Probe di liveness Kubernetes (controllo leggero).
 
 **Response 200:**
+
 ```json
 {
   "status": "alive",
@@ -89,9 +96,11 @@ Probe di liveness Kubernetes (controllo leggero).
 ---
 
 ### GET /metrics
+
 Metriche di sistema per monitoring.
 
 **Response 200:**
+
 ```json
 {
   "timestamp": "2026-02-10T12:00:00.000000",
@@ -118,9 +127,11 @@ Metriche di sistema per monitoring.
 ## Configuration
 
 ### GET /api/config
+
 Recupera tutte le configurazioni dei lotti.
 
 **Response 200:**
+
 ```json
 {
   "Gara 21707 - Lotto 3 - DC": {
@@ -157,9 +168,11 @@ Recupera tutte le configurazioni dei lotti.
 ---
 
 ### POST /api/config
+
 Aggiorna la configurazione di uno o più lotti.
 
 **Request Body:**
+
 ```json
 {
   "Gara 21707 - Lotto 3 - DC": {
@@ -168,8 +181,8 @@ Aggiorna la configurazione di uno o più lotti.
     "max_tech_score": 60.0,
     "max_econ_score": 40.0,
     "alpha": 0.25,
-    "company_certs": [...],
-    "reqs": [...]
+    "company_certs": [],
+    "reqs": []
   }
 }
 ```
@@ -179,17 +192,21 @@ Aggiorna la configurazione di uno o più lotti.
 ---
 
 ### POST /api/config/add
+
 Crea un nuovo lotto con configurazione di default.
 
 **Query Parameters:**
+
 - `lot_key` (string, required): Nome/identificativo del nuovo lotto
 
 **Request:**
-```
+
+```text
 POST /api/config/add?lot_key=Nuova%20Gara%202026
 ```
 
 **Response 200:**
+
 ```json
 {
   "name": "Nuova Gara 2026",
@@ -209,12 +226,15 @@ POST /api/config/add?lot_key=Nuova%20Gara%202026
 ---
 
 ### DELETE /api/config/{lot_key}
+
 Elimina un lotto esistente.
 
 **Path Parameters:**
+
 - `lot_key` (string): Identificativo del lotto
 
 **Response 200:**
+
 ```json
 {
   "status": "success",
@@ -227,12 +247,15 @@ Elimina un lotto esistente.
 ---
 
 ### POST /api/config/state
+
 Salva lo stato della simulazione per un lotto (persistenza sconto, input tecnici).
 
 **Query Parameters:**
+
 - `lot_key` (string, required): Identificativo del lotto
 
 **Request Body:**
+
 ```json
 {
   "my_discount": 35.5,
@@ -250,6 +273,7 @@ Salva lo stato della simulazione per un lotto (persistenza sconto, input tecnici
 ```
 
 **Response 200:**
+
 ```json
 {"status": "success"}
 ```
@@ -257,9 +281,11 @@ Salva lo stato della simulazione per un lotto (persistenza sconto, input tecnici
 ---
 
 ### GET /api/config/{lot_key}/req/{req_id}/criteria
+
 Recupera i criteri di un requisito specifico.
 
 **Response 200:**
+
 ```json
 {
   "req_id": "REQ_02",
@@ -278,9 +304,11 @@ Recupera i criteri di un requisito specifico.
 ---
 
 ### POST /api/config/{lot_key}/req/{req_id}/criteria
+
 Aggiorna i criteri di un requisito.
 
 **Request Body:**
+
 ```json
 [
   {"id": "a", "label": "Complessità progetto", "weight": 2.0, "max_value": 5},
@@ -289,6 +317,7 @@ Aggiorna i criteri di un requisito.
 ```
 
 **Response 200:**
+
 ```json
 {
   "status": "success",
@@ -301,9 +330,11 @@ Aggiorna i criteri di un requisito.
 ## Master Data
 
 ### GET /api/master-data
+
 Recupera i dati master condivisi (certificazioni, etichette, formule).
 
 **Response 200:**
+
 ```json
 {
   "company_certs": [
@@ -336,6 +367,7 @@ Recupera i dati master condivisi (certificazioni, etichette, formule).
 ---
 
 ### POST /api/master-data
+
 Aggiorna i dati master.
 
 **Request Body:** Stesso formato della response GET
@@ -347,9 +379,11 @@ Aggiorna i dati master.
 ## Scoring & Simulation
 
 ### POST /api/calculate
+
 Calcola punteggi tecnici ed economici completi.
 
 **Request Body:**
+
 ```json
 {
   "lot_key": "Gara 21707 - Lotto 3 - DC",
@@ -377,6 +411,7 @@ Calcola punteggi tecnici ed economici completi.
 ```
 
 **Response 200:**
+
 ```json
 {
   "technical_score": 52.35,
@@ -410,7 +445,7 @@ Calcola punteggi tecnici ed economici completi.
 **Campi Response:**
 
 | Campo | Tipo | Descrizione |
-|-------|------|-------------|
+| --- | --- | --- |
 | `technical_score` | float | Punteggio tecnico pesato (gara points) |
 | `economic_score` | float | Punteggio economico |
 | `total_score` | float | Somma tech + econ |
@@ -422,9 +457,11 @@ Calcola punteggi tecnici ed economici completi.
 ---
 
 ### POST /api/simulate
+
 Genera curva di simulazione: punteggio totale per ogni livello di sconto.
 
 **Request Body:**
+
 ```json
 {
   "lot_key": "Gara 21707 - Lotto 3 - DC",
@@ -436,11 +473,11 @@ Genera curva di simulazione: punteggio totale per ogni livello di sconto.
 ```
 
 **Response 200:**
+
 ```json
 [
   {"discount": 10, "total_score": 70.25, "economic_score": 17.90},
   {"discount": 12, "total_score": 72.50, "economic_score": 20.15},
-  ...
   {"discount": 70, "total_score": 92.35, "economic_score": 40.00}
 ]
 ```
@@ -451,9 +488,11 @@ Genera curva di simulazione: punteggio totale per ogni livello di sconto.
 ---
 
 ### POST /api/monte-carlo
+
 Esegue simulazione Monte Carlo per calcolare probabilità di vittoria.
 
 **Request Body:**
+
 ```json
 {
   "lot_key": "Gara 21707 - Lotto 3 - DC",
@@ -471,13 +510,14 @@ Esegue simulazione Monte Carlo per calcolare probabilità di vittoria.
 **Parametri:**
 
 | Parametro | Default | Descrizione |
-|-----------|---------|-------------|
+| --- | --- | --- |
 | `competitor_discount_std` | 3.5 | Deviazione standard sconto competitore |
 | `competitor_tech_score_mean` | 90% max | Media punteggio tecnico competitore |
 | `competitor_tech_score_std` | 3.0 | Deviazione standard tech competitore |
 | `iterations` | 500 | Numero iterazioni (max 10000) |
 
 **Response 200:**
+
 ```json
 {
   "win_probability": 78.4,
@@ -485,7 +525,7 @@ Esegue simulazione Monte Carlo per calcolare probabilità di vittoria.
   "avg_total_score": 91.25,
   "min_score": 85.30,
   "max_score": 96.80,
-  "score_distribution": [91.2, 90.8, 92.1, ...],
+  "score_distribution": [91.2, 90.8, 92.1],
   "competitor_avg_score": 88.50,
   "competitor_min_score": 82.10,
   "competitor_max_score": 94.20,
@@ -496,9 +536,11 @@ Esegue simulazione Monte Carlo per calcolare probabilità di vittoria.
 ---
 
 ### POST /api/optimize-discount
+
 Trova lo sconto ottimale per battere un competitore specifico.
 
 **Request Body:**
+
 ```json
 {
   "lot_key": "Gara 21707 - Lotto 3 - DC",
@@ -511,6 +553,7 @@ Trova lo sconto ottimale per battere un competitore specifico.
 ```
 
 **Response 200:**
+
 ```json
 {
   "competitor_total_score": 88.50,
@@ -538,20 +581,19 @@ Trova lo sconto ottimale per battere un competitore specifico.
     {
       "name": "Aggressivo",
       "suggested_discount": 42.0,
-      "win_probability": 92.5,
-      ...
+      "win_probability": 92.5
     },
     {
       "name": "Max",
       "suggested_discount": 47.0,
-      "win_probability": 96.0,
-      ...
+      "win_probability": 96.0
     }
   ]
 }
 ```
 
 **Scenari:**
+
 - **Conservativo**: Minimo sconto per battere il competitore
 - **Bilanciato**: +5% sopra conservativo
 - **Aggressivo**: +10% sopra conservativo
@@ -562,9 +604,11 @@ Trova lo sconto ottimale per battere un competitore specifico.
 ## Export
 
 ### POST /api/export-pdf
+
 Genera report PDF professionale.
 
 **Request Body:**
+
 ```json
 {
   "lot_key": "Gara 21707 - Lotto 3 - DC",
@@ -585,10 +629,12 @@ Genera report PDF professionale.
 ```
 
 **Response 200:**
+
 - Content-Type: `application/pdf`
 - Content-Disposition: `attachment; filename=report_Gara_21707_Lotto_3_DC.pdf`
 
 **Contenuto PDF:**
+
 1. Intestazione con logo e data
 2. Riepilogo punteggi (gauge grafici)
 3. Dettaglio per categoria
@@ -600,6 +646,7 @@ Genera report PDF professionale.
 ## Schemi Dati
 
 ### LotConfig
+
 ```typescript
 interface LotConfig {
   name: string;                    // Nome identificativo
@@ -616,6 +663,7 @@ interface LotConfig {
 ```
 
 ### Requirement
+
 ```typescript
 interface Requirement {
   id: string;                      // ID univoco (es. "REQ_01")
@@ -642,6 +690,7 @@ interface Requirement {
 ```
 
 ### SubReq (Criterio)
+
 ```typescript
 interface SubReq {
   id: string;        // ID (es. "a", "b", "c")
@@ -652,6 +701,7 @@ interface SubReq {
 ```
 
 ### TechInput
+
 ```typescript
 interface TechInput {
   req_id: string;                   // ID requisito
@@ -674,7 +724,7 @@ interface SubReqVal {
 ## Codici Errore
 
 | Codice | Descrizione |
-|--------|-------------|
+| --- | --- |
 | 400 | Bad Request - Parametri non validi |
 | 401 | Unauthorized - Token mancante o non valido |
 | 404 | Not Found - Risorsa non trovata |
@@ -684,6 +734,7 @@ interface SubReqVal {
 | 503 | Service Unavailable - Sistema non pronto |
 
 **Formato errore standard:**
+
 ```json
 {
   "detail": "Messaggio di errore"
@@ -691,6 +742,7 @@ interface SubReqVal {
 ```
 
 **Formato errore validazione (422):**
+
 ```json
 {
   "detail": "Validation error",

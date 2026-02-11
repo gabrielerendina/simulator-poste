@@ -18,6 +18,7 @@ Run the Simulator Poste application locally using Docker or manual setup.
 ```
 
 This script will:
+
 1. Check if Docker is running
 2. Create `.env` file with defaults if missing
 3. Build Docker containers
@@ -27,9 +28,9 @@ This script will:
 
 ### Access the Application
 
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
+- **Frontend**: `http://localhost:5173`
+- **Backend API**: `http://localhost:8000`
+- **API Documentation**: `http://localhost:8000/docs`
 
 ### Stop All Services
 
@@ -50,6 +51,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Or use the script:
+
 ```bash
 ./start-backend.sh
 ```
@@ -63,6 +65,7 @@ npm run dev
 ```
 
 Or use the script:
+
 ```bash
 ./start-frontend.sh
 ```
@@ -121,12 +124,14 @@ Point directly to your local folder path in the UI.
 The docker-compose.yml mounts `/Users/gabriele.rendina` as `/host_home` (read-only).
 
 In the UI, use paths like:
-```
+
+```text
 /host_home/path/to/your/certs
 ```
 
 For example, if your certificates are in `/Users/gabriele.rendina/Documents/Certs`, enter:
-```
+
+```text
 /host_home/Documents/Certs
 ```
 
@@ -135,6 +140,7 @@ For example, if your certificates are in `/Users/gabriele.rendina/Documents/Cert
 For SharePoint folders, you have two options:
 
 1. **rclone mount** (recommended): Mount SharePoint as a local folder, then mount that into Docker
+
    ```bash
    # Install rclone and configure SharePoint remote
    rclone config  # Set up SharePoint remote as "sharepoint:"
@@ -153,6 +159,7 @@ For SharePoint folders, you have two options:
 The application uses SQLite stored at `backend/simulator_poste.db`.
 
 Initial data is seeded from:
+
 - `backend/lot_configs.json` - Lot configurations
 - `backend/master_data.json` - Master data (certificates, labels)
 
@@ -168,17 +175,20 @@ docker-compose up -d
 
 ### Docker not running
 
-```
+```text
 Error: Docker is not running
 ```
+
 Start Docker Desktop and wait for it to be fully running.
 
 ### Port already in use
 
-```
+```text
 Error: Bind for 0.0.0.0:5173 failed: port is already allocated
 ```
+
 Stop other services using ports 5173 or 8000:
+
 ```bash
 lsof -ti:5173,8000 | xargs kill -9
 ```
@@ -186,6 +196,7 @@ lsof -ti:5173,8000 | xargs kill -9
 ### Health check timeout
 
 Check container logs:
+
 ```bash
 docker-compose logs backend
 docker-compose logs frontend
@@ -194,6 +205,7 @@ docker-compose logs frontend
 ### Build failures
 
 Clean Docker cache and rebuild:
+
 ```bash
 docker system prune -a
 docker-compose build --no-cache
@@ -201,7 +213,7 @@ docker-compose build --no-cache
 
 ## Architecture
 
-```
+```text
 ┌─────────────────┐      ┌─────────────────┐
 │   Frontend      │      │   Backend       │
 │   (React/Vite)  │─────▶│   (FastAPI)     │

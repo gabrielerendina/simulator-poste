@@ -23,7 +23,7 @@ Documentazione tecnica dettagliata dell'architettura, formule di scoring, e impl
 
 ### 1.1 Overview
 
-```
+```text
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │                 │     │                 │     │                 │
 │  React Frontend │────►│  FastAPI        │────►│  SQLite DB      │
@@ -42,8 +42,9 @@ Documentazione tecnica dettagliata dell'architettura, formule di scoring, e impl
 ### 1.2 Stack Tecnologico
 
 #### Backend
+
 | Componente | Tecnologia | Versione | Ruolo |
-|------------|------------|----------|-------|
+| --- | --- | --- | --- |
 | Framework | FastAPI | 0.128.0 | API REST, OpenAPI docs |
 | ORM | SQLAlchemy | 2.0.46 | Gestione database |
 | Validazione | Pydantic | 2.12.5 | Schema request/response |
@@ -53,8 +54,9 @@ Documentazione tecnica dettagliata dell'architettura, formule di scoring, e impl
 | Server | Uvicorn | 0.34.0 | ASGI server |
 
 #### Frontend
+
 | Componente | Tecnologia | Versione | Ruolo |
-|------------|------------|----------|-------|
+| --- | --- | --- | --- |
 | Framework | React | 19.2.0 | UI components |
 | Build | Vite | 7.2.4 | Dev server, bundling |
 | Styling | Tailwind CSS | 4.1.18 | Utility-first CSS |
@@ -64,11 +66,12 @@ Documentazione tecnica dettagliata dell'architettura, formule di scoring, e impl
 
 ### 1.3 Flusso Dati
 
-```
+```text
 User Input → React State → API Call → FastAPI Endpoint → Business Logic → Database → Response → React State → UI Update
 ```
 
 **Context Pattern (Frontend):**
+
 - `ConfigContext`: Gestisce configurazione lotti, master data
 - `SimulationContext`: Gestisce stato simulazione, input tecnici, risultati
 
@@ -78,7 +81,7 @@ User Input → React State → API Call → FastAPI Endpoint → Business Logic 
 
 ### 2.1 Modello ER
 
-```
+```text
 ┌─────────────────────────┐
 │     LotConfigModel      │
 ├─────────────────────────┤
@@ -110,6 +113,7 @@ User Input → React State → API Call → FastAPI Endpoint → Business Logic 
 ### 2.2 Struttura JSON Fields
 
 #### company_certs (LotConfig)
+
 ```json
 [
   {
@@ -121,6 +125,7 @@ User Input → React State → API Call → FastAPI Endpoint → Business Logic 
 ```
 
 #### reqs (LotConfig)
+
 ```json
 [
   {
@@ -144,7 +149,7 @@ User Input → React State → API Call → FastAPI Endpoint → Business Logic 
     "sub_reqs": [
       {"id": "a", "label": "Complessità", "weight": 1.5, "max_value": 5}
     ],
-    "criteria": [...],
+    "criteria": [],
     "attestazione_score": 3.0,
     "custom_metrics": [
       {"id": "M1", "label": "Volumi", "min_score": 0, "max_score": 5}
@@ -154,6 +159,7 @@ User Input → React State → API Call → FastAPI Endpoint → Business Logic 
 ```
 
 #### state (LotConfig)
+
 ```json
 {
   "my_discount": 35.0,
@@ -189,6 +195,7 @@ Al primo avvio, `crud.seed_initial_data()`:
 $$P_{econ} = P_{max} \times \left( \frac{P_{base} - P_{offerto}}{P_{base} - P_{migliore}} \right)^\alpha$$
 
 Dove:
+
 - $P_{base}$ = Importo base della gara
 - $P_{offerto}$ = Prezzo della nostra offerta
 - $P_{migliore}$ = min($P_{offerto}$, $P_{competitore}$) → prezzo migliore effettivo
@@ -196,6 +203,7 @@ Dove:
 - $P_{max}$ = Punteggio massimo economico (default: 40)
 
 **Implementazione:**
+
 ```python
 def calculate_economic_score(p_base, p_offered, p_best_competitor, alpha=0.3, max_econ=40.0):
     if p_offered > p_base:
@@ -214,6 +222,7 @@ def calculate_economic_score(p_base, p_offered, p_best_competitor, alpha=0.3, ma
 ```
 
 **Casi limite:**
+
 - Se $P_{offerto} > P_{base}$: ritorna 0
 - Se $P_{offerto} = P_{migliore}$: ritorna $P_{max}$
 - Se $P_{offerto} = P_{base}$: ritorna 0
@@ -225,14 +234,17 @@ def calculate_economic_score(p_base, p_offered, p_best_competitor, alpha=0.3, ma
 $$P = (2 \times R) + (R \times C)$$
 
 Dove:
+
 - $R$ = min(risorse proposte, max_res)
 - $C$ = min(certificazioni totali, max_certs, R)
 
 **Vincoli:**
+
 - $C \leq R$ (non puoi avere più certificazioni che risorse)
 - Risultato cappato a `max_points`
 
 **Implementazione:**
+
 ```python
 def calculate_prof_score(R, C, max_res, max_points, max_certs=5):
     R = min(R, max_res)
@@ -246,8 +258,9 @@ def calculate_prof_score(R, C, max_res, max_points, max_certs=5):
 ```
 
 **Esempi:**
+
 | R | C | Score |
-|---|---|-------|
+| --- | --- | --- |
 | 5 | 5 | 35 |
 | 4 | 3 | 20 |
 | 3 | 3 | 15 |
@@ -264,6 +277,7 @@ $$Raw = \sum_{i}(peso\_interno_i \times valore_i) + attestazione + custom\_metri
 $$Pesato = \frac{Raw}{Max\_Raw} \times gara\_weight$$
 
 Dove:
+
 - $valore_i$ = 0, 2, 3, 4, 5 (giudizio discrezionale)
 - $peso\_interno$ = weight del criterio
 - $attestazione$ = punti se attestazione_active
@@ -274,6 +288,7 @@ Dove:
 $$Tech\_Score = \sum_{cat} Category\_Score$$
 
 Dove le categorie sono:
+
 - `category_company_certs`: Certificazioni aziendali (pesate)
 - `category_resource`: Certificazioni professionali (pesate)
 - `category_reference`: Referenze aziendali (pesate)
@@ -284,11 +299,13 @@ Dove le categorie sono:
 Per ogni requisito, `calculate_max_points_for_req()`:
 
 **Resource:**
+
 ```python
 max_points = (2 * max_res) + (max_res * max_certs)
 ```
 
 **Reference/Project:**
+
 ```python
 max_points = sum(weight * max_value for each criterion) + attestazione_score + sum(custom_metric.max_score)
 ```
@@ -299,7 +316,7 @@ max_points = sum(weight * max_value for each criterion) + attestazione_score + s
 
 ### 4.1 Flusso
 
-```
+```text
 ┌────────┐     ┌────────┐     ┌────────┐
 │Frontend│     │Backend │     │SAP IAS │
 └───┬────┘     └───┬────┘     └───┬────┘
@@ -319,6 +336,7 @@ max_points = sum(weight * max_value for each criterion) + attestazione_score + s
 ### 4.2 Configurazione
 
 **Variabili Ambiente:**
+
 ```bash
 OIDC_ISSUER=https://tenant.accounts.ondemand.com
 OIDC_CLIENT_ID=your-client-id
@@ -411,6 +429,7 @@ def monte_carlo_simulation(data):
 ### 5.2 Distribuzione Normale
 
 Parametri default:
+
 - `competitor_discount_std`: 3.5% (varianza tipica mercato)
 - `competitor_tech_score_std`: 3.0 punti (varianza tipica)
 
@@ -464,7 +483,7 @@ def optimize_discount(data):
 ### 6.2 Scenari
 
 | Nome | Strategia | Target Probabilità |
-|------|-----------|-------------------|
+| --- | --- | --- |
 | Conservativo | Minimo necessario | 70-80% |
 | Bilanciato | +5% safety margin | 80-90% |
 | Aggressivo | +10% margin | 90-95% |
@@ -481,7 +500,7 @@ def optimize_discount(data):
 
 ### 7.2 Struttura Report
 
-```
+```text
 Page 1: Header + Summary
 ├── Logo
 ├── Titolo Gara
@@ -528,7 +547,7 @@ def generate_histogram():
 
 **Context API Pattern:**
 
-```
+```text
 App
 ├── ConfigProvider
 │   └── config, masterData, setConfig
@@ -538,7 +557,7 @@ App
 
 ### 8.2 Componenti Principali
 
-```
+```text
 src/
 ├── App.jsx              # Router, providers, layout
 ├── components/
@@ -570,7 +589,7 @@ src/
 
 ### 8.3 Data Flow
 
-```
+```text
 User Interaction
       │
       ▼
@@ -606,6 +625,7 @@ useEffect(() => {
 ### 9.1 Docker
 
 **Backend Dockerfile:**
+
 ```dockerfile
 FROM python:3.12-slim
 WORKDIR /app
@@ -616,6 +636,7 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 **Frontend Dockerfile:**
+
 ```dockerfile
 FROM node:20-alpine
 WORKDIR /app
@@ -691,6 +712,7 @@ services:
 ### 10.3 Rate Limiting
 
 Non implementato nativamente. Raccomandato:
+
 - API Gateway (Kong, NGINX)
 - CloudFlare
 - WAF
@@ -734,6 +756,7 @@ uvicorn main:app
 ### OIDC discovery fallisce
 
 Verifica:
+
 1. `OIDC_ISSUER` è raggiungibile
 2. `/.well-known/openid-configuration` risponde
 3. Certificate chain valida
@@ -741,6 +764,7 @@ Verifica:
 ### Monte Carlo lento
 
 Riduci iterazioni:
+
 ```json
 {"iterations": 100}
 ```
@@ -750,6 +774,7 @@ O aumenta timeout lato client.
 ### PDF non si genera
 
 Verifica:
+
 1. `matplotlib` installato
 2. Backend usato con `Agg` (no GUI)
 3. Font disponibili
@@ -759,6 +784,7 @@ Verifica:
 ## Changelog
 
 ### v1.0.0 (2026-02-10)
+
 - Release iniziale
 - Scoring tecnico/economico
 - Monte Carlo simulation
