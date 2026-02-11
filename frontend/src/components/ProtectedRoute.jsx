@@ -1,8 +1,9 @@
+import { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import LoginButton from './LoginButton';
 
 export default function ProtectedRoute({ children }) {
-    const { isAuthenticated, isLoading, error } = useAuth();
+    const { isAuthenticated, isLoading, error, login } = useAuth();
 
     // Allow callback path to pass through for OIDC flow completion
     if (window.location.pathname === '/callback') {
@@ -35,6 +36,13 @@ export default function ProtectedRoute({ children }) {
         );
     }
 
+    // Auto-redirect to IAS when not authenticated and not loading/error
+    useEffect(() => {
+        if (!isLoading && !isAuthenticated && !error) {
+            login();
+        }
+    }, [isLoading, isAuthenticated, error, login]);
+
     if (!isAuthenticated) {
         return (
             <div className="flex items-center justify-center h-screen bg-slate-50">
@@ -48,7 +56,7 @@ export default function ProtectedRoute({ children }) {
                         Poste Tender Simulator
                     </h1>
                     <p className="text-slate-600 mb-6">
-                        Please sign in to access the application
+                        Redirecting to authentication...
                     </p>
                     <LoginButton className="w-full justify-center" />
                 </div>
