@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import axios from 'axios';
 import { logger } from '../../../utils/logger';
 import { API_URL } from '../../../utils/api';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const ConfigContext = createContext(null);
 
@@ -20,7 +21,15 @@ export const ConfigProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Wait for authentication before fetching protected resources
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
   const fetchConfig = useCallback(async () => {
+    // Skip if auth not ready or user not authenticated yet (e.g., during OIDC callback)
+    if (authLoading || !isAuthenticated) {
+      return;
+    }
+
     try {
       setLoading(true);
       const [configRes, masterRes] = await Promise.all([
@@ -36,7 +45,13 @@ export const ConfigProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+    } catch (err) {
+      logger.error('Failed to fetch config', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [authLoading, isAuthenticated]);
 
   const updateConfig = useCallback(async (newConfig) => {
     try {
@@ -51,8 +66,16 @@ export const ConfigProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    fetchConfig();
-  }, [fetchConfig]);
+    // Start fetching as soon as auth is ready + authenticated
+    if (!authLoading && isAuthenticated) {
+      fetchConfig();
+    }
+
+    // If auth completed but user is not authenticated (unexpected), stop loading state
+    if (!authLoading && !isAuthenticated) {
+      setLoading(false);
+    }
+  }, [authLoading, isAuthenticated, fetchConfig]);
 
   const value = {
     config,
