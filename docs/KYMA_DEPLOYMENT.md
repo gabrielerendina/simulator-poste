@@ -27,7 +27,7 @@ Questa guida documenta **passo per passo** l'intero processo di deployment dell'
 ### 1.1 Account e Servizi SAP
 
 | Requisito | Descrizione |
-|-----------|-------------|
+| --- | --- |
 | SAP BTP Account | Accesso a SAP Business Technology Platform |
 | Kyma Environment | Ambiente Kyma abilitato nel subaccount |
 | SAP IAS | Identity Authentication Service configurato |
@@ -55,7 +55,7 @@ kubectl version --client --short
 
 ## 2. Architettura dell'Applicazione
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                              INTERNET                                         │
 └─────────────────────────────────┬────────────────────────────────────────────┘
@@ -104,7 +104,7 @@ kubectl version --client --short
 ### 2.1 Componenti
 
 | Componente | Tecnologia | Container Image | Note |
-|------------|------------|-----------------|------|
+| --- | --- | --- | --- |
 | Backend | FastAPI + Python 3.10 | `ghcr.io/{owner}/simulator-poste-backend` | Gunicorn con 4 workers |
 | Frontend | React 18 + Vite | `ghcr.io/{owner}/simulator-poste-frontend` | Nginx per SPA |
 | Database | SQLite | N/A | Persistente su PVC |
@@ -116,7 +116,7 @@ kubectl version --client --short
 
 ### 3.1 Ottenere Kubeconfig
 
-1. Accedi a **SAP BTP Cockpit**: https://cockpit.btp.cloud.sap
+1. Accedi a **SAP BTP Cockpit**: <https://cockpit.btp.cloud.sap>
 2. Naviga al tuo **Subaccount**
 3. Vai su **Kyma Environment** → **Link to dashboard**
 4. Oppure scarica direttamente il kubeconfig:
@@ -170,7 +170,7 @@ kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
 In **Trust** → **OpenID Connect Configuration**:
 
 | Campo | Valore |
-|-------|--------|
+| --- | --- |
 | Name | simulator-poste |
 | Subject Name Identifier | Email |
 | Default Name ID Format | Email |
@@ -179,7 +179,7 @@ In **Trust** → **OpenID Connect Configuration**:
 
 In **Trust** → **OpenID Connect Configuration** → **Redirect URIs**:
 
-```
+```text
 https://simulator-poste.c-xxxxxxx.kyma.ondemand.com/callback
 https://simulator-poste.c-xxxxxxx.kyma.ondemand.com
 https://simulator-poste.c-xxxxxxx.kyma.ondemand.com/silent-renew.html
@@ -187,7 +187,7 @@ https://simulator-poste.c-xxxxxxx.kyma.ondemand.com/silent-renew.html
 
 ### 4.4 Configurare Post Logout Redirect URIs
 
-```
+```text
 https://simulator-poste.c-xxxxxxx.kyma.ondemand.com
 ```
 
@@ -205,7 +205,7 @@ In **Trust** → **OpenID Connect Configuration** → **Secrets**:
 In **Trust** → **Token Configuration**:
 
 | Campo | Valore |
-|-------|--------|
+| --- | --- |
 | Token Lifetime | 3600 (1 ora) |
 | Refresh Token Lifetime | 43200 (12 ore) |
 
@@ -226,7 +226,7 @@ Vai su **Repository** → **Settings** → **Secrets and variables** → **Actio
 Aggiungi i seguenti secrets:
 
 | Secret Name | Valore | Descrizione |
-|-------------|--------|-------------|
+| --- | --- | --- |
 | `KYMA_KUBECONFIG` | `<base64>` | Kubeconfig codificato in base64 |
 | `KYMA_APP_URL` | `https://simulator-poste.c-xxxxxxx.kyma.ondemand.com` | URL completo app |
 | `OIDC_CLIENT_ID` | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | Client ID da SAP IAS |
@@ -256,7 +256,7 @@ cat kubeconfig-base64.txt | pbcopy  # macOS
 
 ### 6.1 Struttura Directory
 
-```
+```text
 k8s/
 ├── namespace.yaml           # Namespace con istio-injection
 ├── apirule.yaml            # Routing API Gateway  [⚠️ MODIFICARE DOMINIO]
@@ -451,14 +451,14 @@ Il file `.github/workflows/deploy.yml` gestisce:
 ### 8.2 Trigger
 
 | Evento | Branch | Azione |
-|--------|--------|--------|
+| --- | --- | --- |
 | Push | `main` | Deploy automatico |
 | Push | `kyma` | Deploy automatico |
 | Manual | qualsiasi | `workflow_dispatch` |
 
 ### 8.3 Flusso CI/CD
 
-```
+```text
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Git Push   │ ──▶ │   Build     │ ──▶ │   Deploy    │
 │  (main/kyma)│     │ Docker imgs │     │   to Kyma   │
@@ -557,6 +557,7 @@ kubectl logs -l app=ory-oathkeeper -n kyma-system --tail=50
 ```
 
 **Errori comuni APIRule**:
+
 - `hosts mismatch`: il dominio non corrisponde al cluster
 - `service not found`: il service non esiste o nome errato
 - `gateway not ready`: attendere che il gateway sia pronto
@@ -729,7 +730,7 @@ Rispettare l'ordine per evitare errori di dipendenze:
 ## Appendice B: URL e Endpoint
 
 | Tipo | URL |
-|------|-----|
+| --- | --- |
 | App | `https://simulator-poste.{domain}` |
 | API | `https://simulator-poste.{domain}/api/...` |
 | Health | `https://simulator-poste.{domain}/health/live` |
@@ -739,7 +740,7 @@ Rispettare l'ordine per evitare errori di dipendenze:
 ## Appendice C: Risorse Kubernetes Finali
 
 | Risorsa | Nome | Namespace |
-|---------|------|-----------|
+| --- | --- | --- |
 | Namespace | simulator-poste | - |
 | Deployment | simulator-poste-backend | simulator-poste |
 | Deployment | simulator-poste-frontend | simulator-poste |
