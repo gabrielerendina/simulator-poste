@@ -69,17 +69,12 @@ class OIDCMiddleware:
     # Public paths that don't require authentication
     PUBLIC_PATHS = [
         "/health",
+        "/health/ready",
+        "/health/live",
+        "/metrics",
         "/docs",
         "/openapi.json",
         "/redoc",
-        "/api/config",         # Frontend needs config before auth
-        "/api/master-data",    # Frontend needs master data before auth
-        # Temporarily allow simulation endpoints to bypass 401 while OIDC debug
-        "/api/calculate",
-        "/api/simulate",
-        "/api/optimize-discount",
-        "/api/monte-carlo",
-        "/api/export-pdf",
     ]
 
     def __init__(self, app, config: Optional[OIDCConfig] = None):
@@ -88,10 +83,6 @@ class OIDCMiddleware:
 
     async def __call__(self, request: Request, call_next):
         """Process request and validate JWT if required"""
-
-        # TEMPORARY BYPASS: disable authentication to unblock simulation
-        return await call_next(request)
-
         # Skip authentication for OPTIONS requests (CORS preflight)
         if request.method == "OPTIONS":
             return await call_next(request)
@@ -192,28 +183,23 @@ class OIDCMiddleware:
                     detail=f"Public key not found for kid: {kid}"
                 )
 
-            # Decode and validate token
-            # Note: SAP IAS tokens - skip audience validation entirely
-            # SAP IAS uses client_id in 'azp' claim, not standard 'aud'
+            # Decode and validate token signature/time-based claims
             decode_options = {
                 "verify_signature": True,
                 "verify_exp": True,
                 "verify_nbf": True,
                 "verify_iat": True,
-                "verify_aud": False,  # SAP IAS doesn't use standard audience
-                "verify_iss": False,  # Disable issuer check to avoid mismatch
+                "verify_aud": False,  # manual audience validation below
+                "verify_iss": False,  # manual issuer validation below
             }
 
-            # If verifying audience, pass the expected audiences
-            decode_kwargs = {
-                "algorithms": ["RS256"],
-                "options": decode_options,
-                # Do NOT pass audience or issuer to skip those validations
-            }
+            decoded = jwt.decode(
+                token,
+                key,
+                algorithms=["RS256"],
+                options=decode_options,
+            )
 
-            decoded = jwt.decode(token, key, **decode_kwargs)
-
-            # Additional validation
             current_time = datetime.utcnow().timestamp()
 
             # Check expiration
@@ -231,6 +217,36 @@ class OIDCMiddleware:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Token not yet valid"
                 )
+
+            # Issuer validation
+            issuer = decoded.get("iss")
+            if issuer and issuer != self.config.issuer:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token issuer"
+                )
+
+            # Audience / azp validation (SAP IAS uses azp for client_id)
+            allowed_audiences = [a for a in {self.config.audience, self.config.client_id} if a]
+            aud_claim = decoded.get("aud")
+            azp_claim = decoded.get("azp")
+
+            audience_ok = False
+            if allowed_audiences:
+                if isinstance(aud_claim, list):
+                    audience_ok = any(aud in aud_claim for aud in allowed_audiences)
+                elif isinstance(aud_claim, str):
+                    audience_ok = aud_claim in allowed_audiences
+
+                # Fallback: SAP IAS often places client_id in azp
+                if not audience_ok and azp_claim:
+                    audience_ok = azp_claim in allowed_audiences
+
+                if not audience_ok:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid token audience"
+                    )
 
             return decoded
 
