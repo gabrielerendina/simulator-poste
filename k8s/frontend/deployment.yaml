@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ghcr.io/gabrielerendina/simulator-poste-frontend:latest
+        image: ghcr.io/raistlin82/simulator-poste-frontend:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 80
