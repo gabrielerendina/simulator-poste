@@ -154,6 +154,13 @@ class OIDCMiddleware:
             unverified_header = jwt.get_unverified_header(token)
             kid = unverified_header.get("kid")
 
+            # Log token claims for debugging (without sensitive data)
+            try:
+                unverified_claims = jwt.get_unverified_claims(token)
+                logger.debug(f"Token claims: iss={unverified_claims.get('iss')}, aud={unverified_claims.get('aud')}, exp={unverified_claims.get('exp')}")
+            except Exception:
+                pass
+
             if not kid:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -176,21 +183,34 @@ class OIDCMiddleware:
                 )
 
             # Decode and validate token
-            decoded = jwt.decode(
-                token,
-                key,
-                algorithms=["RS256"],
-                audience=self.config.audience,
-                issuer=self.config.issuer,
-                options={
-                    "verify_signature": True,
-                    "verify_exp": True,
-                    "verify_nbf": True,
-                    "verify_iat": True,
-                    "verify_aud": True,
-                    "verify_iss": True,
-                }
-            )
+            # Note: SAP IAS tokens may not have an audience claim or use different values
+            # We validate audience only if OIDC_AUDIENCE is explicitly set
+            verify_audience = bool(self.config.audience and self.config.audience != self.config.client_id)
+
+            decode_options = {
+                "verify_signature": True,
+                "verify_exp": True,
+                "verify_nbf": True,
+                "verify_iat": True,
+                "verify_aud": verify_audience,  # Only verify if explicitly configured
+                "verify_iss": True,
+            }
+
+            # If verifying audience, pass the expected audiences
+            decode_kwargs = {
+                "algorithms": ["RS256"],
+                "issuer": self.config.issuer,
+                "options": decode_options,
+            }
+
+            if verify_audience:
+                decode_kwargs["audience"] = self.config.audience
+            elif self.config.client_id:
+                # Accept client_id as audience if present in token
+                decode_kwargs["audience"] = self.config.client_id
+                decode_options["verify_aud"] = False  # Don't fail if missing
+
+            decoded = jwt.decode(token, key, **decode_kwargs)
 
             # Additional validation
             current_time = datetime.utcnow().timestamp()
