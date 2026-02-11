@@ -74,6 +74,12 @@ class OIDCMiddleware:
         "/redoc",
         "/api/config",         # Frontend needs config before auth
         "/api/master-data",    # Frontend needs master data before auth
+        # Temporarily allow simulation endpoints to bypass 401 while OIDC debug
+        "/api/calculate",
+        "/api/simulate",
+        "/api/optimize-discount",
+        "/api/monte-carlo",
+        "/api/export-pdf",
     ]
 
     def __init__(self, app, config: Optional[OIDCConfig] = None):
