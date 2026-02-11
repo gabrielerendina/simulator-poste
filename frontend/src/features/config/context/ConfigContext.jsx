@@ -45,12 +45,6 @@ export const ConfigProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-    } catch (err) {
-      logger.error('Failed to fetch config', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
   }, [authLoading, isAuthenticated]);
 
   const updateConfig = useCallback(async (newConfig) => {
