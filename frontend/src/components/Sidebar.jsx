@@ -171,7 +171,7 @@ export default function Sidebar({
             {/* Footer - Credits */}
             <div className="p-3 border-t border-slate-200 bg-white">
                 <div className="flex items-center justify-center gap-2">
-                    <img src="/gr-logo.svg" alt="GR" className="h-5 w-auto opacity-70" />
+                    <img src="/gr-logo.png" alt="GR" className="h-5 w-auto opacity-70" />
                     <span className="text-[10px] text-slate-400 font-medium">Gabriele Rendina 2026</span>
                 </div>
             </div>

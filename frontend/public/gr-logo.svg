@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 120" fill="none">
-  <!-- Left sail/wing -->
-  <path d="M75 0 C55 25, 25 55, 0 120 Q40 95, 70 40 Z" fill="#C41E3A"/>
-  <!-- Right sail/wing -->
-  <path d="M82 8 C72 28, 55 60, 45 120 L95 120 Q100 75, 82 8 Z" fill="#C41E3A"/>
-</svg>
