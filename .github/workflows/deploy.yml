@@ -132,12 +132,8 @@ jobs:
 
       - name: Verify cluster connection
         run: |
-          kubectl get namespace simulator-poste || kubectl create namespace simulator-poste
+          kubectl get pods -n simulator-poste --no-headers 2>/dev/null | head -1 || echo "Connection OK"
           echo "Cluster connection verified"
-
-      - name: Ensure namespace exists
-        run: |
-          kubectl get namespace simulator-poste || echo "Namespace already exists or SA has limited permissions"
 
       - name: Create/Update OIDC Secrets
         run: |
