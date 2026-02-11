@@ -27,6 +27,9 @@ RUN npm run build
 # Fase 2: Service con Nginx
 FROM nginx:alpine
 
+# Backend hostname: "backend" for docker-compose, "backend-service" for Kubernetes
+ARG BACKEND_HOST=backend
+
 # Create nginx cache directories with correct permissions for non-root user
 RUN mkdir -p /var/cache/nginx/client_temp \
     /var/cache/nginx/proxy_temp \
@@ -41,24 +44,24 @@ RUN mkdir -p /var/cache/nginx/client_temp \
 COPY --from=build /app/dist /usr/share/nginx/html
 
 # Aggiungi una configurazione Nginx per gestire il routing SPA e API proxy
-RUN echo 'server { \
+RUN echo "server { \
     listen 80; \
     location /api/ { \
-        proxy_pass http://backend-service:8000/api/; \
+        proxy_pass http://${BACKEND_HOST}:8000/api/; \
         proxy_http_version 1.1; \
-        proxy_set_header Upgrade $http_upgrade; \
-        proxy_set_header Connection "upgrade"; \
-        proxy_set_header Host $host; \
-        proxy_set_header X-Real-IP $remote_addr; \
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
-        proxy_set_header X-Forwarded-Proto $scheme; \
+        proxy_set_header Upgrade \$http_upgrade; \
+        proxy_set_header Connection \"upgrade\"; \
+        proxy_set_header Host \$host; \
+        proxy_set_header X-Real-IP \$remote_addr; \
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; \
+        proxy_set_header X-Forwarded-Proto \$scheme; \
     } \
     location / { \
         root /usr/share/nginx/html; \
         index index.html index.htm; \
-        try_files $uri $uri/ /index.html; \
+        try_files \$uri \$uri/ /index.html; \
     } \
-    }' > /etc/nginx/conf.d/default.conf
+    }" > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
