@@ -137,7 +137,7 @@ class OIDCMiddleware:
             logger.error(f"Token validation failed: {e}")
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"detail": "Token validation failed"},
+                content={"detail": f"Token validation failed: {str(e)}"},
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -157,7 +157,8 @@ class OIDCMiddleware:
             # Log token claims for debugging (without sensitive data)
             try:
                 unverified_claims = jwt.get_unverified_claims(token)
-                logger.debug(f"Token claims: iss={unverified_claims.get('iss')}, aud={unverified_claims.get('aud')}, exp={unverified_claims.get('exp')}")
+                logger.info(f"Token claims: iss={unverified_claims.get('iss')}, aud={unverified_claims.get('aud')}, azp={unverified_claims.get('azp')}, exp={unverified_claims.get('exp')}")
+                logger.info(f"Expected: issuer={self.config.issuer}, client_id={self.config.client_id}, audience={self.config.audience}")
             except Exception:
                 pass
 
@@ -183,32 +184,35 @@ class OIDCMiddleware:
                 )
 
             # Decode and validate token
-            # Note: SAP IAS tokens may not have an audience claim or use different values
-            # We validate audience only if OIDC_AUDIENCE is explicitly set
-            verify_audience = bool(self.config.audience and self.config.audience != self.config.client_id)
-
+            # Note: SAP IAS tokens - skip audience validation entirely
+            # SAP IAS uses client_id in 'azp' claim, not standard 'aud'
             decode_options = {
                 "verify_signature": True,
                 "verify_exp": True,
                 "verify_nbf": True,
                 "verify_iat": True,
-                "verify_aud": verify_audience,  # Only verify if explicitly configured
+                "verify_aud": False,  # SAP IAS doesn't use standard audience
                 "verify_iss": True,
             }
 
             # If verifying audience, pass the expected audiences
             decode_kwargs = {
                 "algorithms": ["RS256"],
-                "issuer": self.config.issuer,
                 "options": decode_options,
             }
 
-            if verify_audience:
-                decode_kwargs["audience"] = self.config.audience
-            elif self.config.client_id:
-                # Accept client_id as audience if present in token
-                decode_kwargs["audience"] = self.config.client_id
-                decode_options["verify_aud"] = False  # Don't fail if missing
+            # Issuer validation: be flexible with trailing slashes
+            token_issuer = unverified_claims.get('iss', '')
+            expected_issuer = self.config.issuer.rstrip('/')
+            token_issuer_normalized = token_issuer.rstrip('/')
+            
+            if token_issuer_normalized == expected_issuer:
+                # Use the token's issuer for validation to avoid mismatch
+                decode_kwargs["issuer"] = token_issuer
+            else:
+                # Issuer mismatch - this will fail
+                decode_kwargs["issuer"] = self.config.issuer
+                logger.warning(f"Issuer mismatch: token has '{token_issuer}', expected '{self.config.issuer}'")
 
             decoded = jwt.decode(token, key, **decode_kwargs)
 
