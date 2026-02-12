@@ -644,7 +644,8 @@ def download_config_template(db: Session = Depends(get_db)):
         master_data = {
             "company_certs": [],
             "prof_certs": [],
-            "economic_formulas": [{"id": "interp_alpha", "label": "Interpolazione (Fattore Alpha)"}]
+            "economic_formulas": [{"id": "interp_alpha", "label": "Interpolazione (Fattore Alpha)"}],
+            "rti_partners": []
         }
     else:
         master_data = {
@@ -652,7 +653,8 @@ def download_config_template(db: Session = Depends(get_db)):
             "prof_certs": master_data_obj.prof_certs or [],
             "economic_formulas": master_data_obj.economic_formulas or [
                 {"id": "interp_alpha", "label": "Interpolazione (Fattore Alpha)"}
-            ]
+            ],
+            "rti_partners": master_data_obj.rti_partners or []
         }
     
     try:
@@ -694,6 +696,8 @@ def export_lot_config(lot_key: str, db: Session = Depends(get_db)):
         "economic_formula": lot_obj.economic_formula,
         "company_certs": lot_obj.company_certs or [],
         "reqs": lot_obj.reqs or [],
+        "rti_enabled": lot_obj.rti_enabled or False,
+        "rti_companies": lot_obj.rti_companies or [],
     }
     
     # Get master data for dropdowns
@@ -702,7 +706,8 @@ def export_lot_config(lot_key: str, db: Session = Depends(get_db)):
         master_data = {
             "company_certs": [],
             "prof_certs": [],
-            "economic_formulas": [{"id": "interp_alpha", "label": "Interpolazione (Fattore Alpha)"}]
+            "economic_formulas": [{"id": "interp_alpha", "label": "Interpolazione (Fattore Alpha)"}],
+            "rti_partners": []
         }
     else:
         master_data = {
@@ -710,7 +715,8 @@ def export_lot_config(lot_key: str, db: Session = Depends(get_db)):
             "prof_certs": master_data_obj.prof_certs or [],
             "economic_formulas": master_data_obj.economic_formulas or [
                 {"id": "interp_alpha", "label": "Interpolazione (Fattore Alpha)"}
-            ]
+            ],
+            "rti_partners": master_data_obj.rti_partners or []
         }
     
     try:
