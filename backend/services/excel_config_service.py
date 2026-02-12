@@ -542,6 +542,11 @@ class ExcelConfigService:
         
         logger.info(f"Excel upload: found sheets {wb.sheetnames}")
         
+        # Debug: log sheet details
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            logger.info(f"  Sheet '{sheet_name}': max_row={ws.max_row}, max_col={ws.max_column}")
+        
         # Parse Lotto sheet
         lot_config = ExcelConfigService._parse_lotto_sheet(wb, warnings)
         if not lot_config:
@@ -696,8 +701,7 @@ class ExcelConfigService:
         
         # Log headers for debugging
         headers = [cell.value for cell in ws[1]]
-        logger.debug(f"Cert_Professionali headers: {headers}")
-        logger.debug(f"Cert_Professionali max_row: {ws.max_row}")
+        logger.info(f"Cert_Professionali: headers={headers}, max_row={ws.max_row}")
         
         valid_prof_certs = set(master_data.get("prof_certs", []))
         result = []
@@ -718,7 +722,7 @@ class ExcelConfigService:
             cert_per_risorsa = int(row[5]) if len(row) > 5 and row[5] else 0
             certificazioni_raw = str(row[6]).strip() if len(row) > 6 and row[6] else ""
             
-            logger.debug(f"Row {row_num}: codice={codice}, nome={nome}, certs={certificazioni_raw}")
+            logger.info(f"Cert_Professionali row {row_num}: codice={codice}, nome={nome}")
             
             # Parse semicolon-separated certifications
             selected_certs = []
@@ -757,8 +761,7 @@ class ExcelConfigService:
         
         # Log headers for debugging
         headers = [cell.value for cell in ws[1]]
-        logger.debug(f"Referenze_Progetti headers: {headers}")
-        logger.debug(f"Referenze_Progetti max_row: {ws.max_row}")
+        logger.info(f"Referenze_Progetti: headers={headers}, max_row={ws.max_row}")
         
         valid_types = {"reference", "project"}
         result = []

@@ -458,10 +458,12 @@ export default function CertVerification({ onClose }) {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {results.results?.map((r, idx) => (
+                      {results.results?.map((r, idx) => {
+                        const displayFilename = r.filename?.split('/').pop() || r.filename;
+                        return (
                         <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                           <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate" title={r.filename}>
-                            {r.filename}
+                            {displayFilename}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-700">{r.req_code || '-'}</td>
                           <td className="px-4 py-3 text-sm text-gray-700">
@@ -501,7 +503,7 @@ export default function CertVerification({ onClose }) {
                             )}
                           </td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                 </div>

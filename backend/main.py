@@ -199,8 +199,8 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal server error"}
     )
 
-# Middleware for payload size validation (max 10 MB)
-MAX_PAYLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+# Middleware for payload size validation (max 100 MB for ZIP uploads)
+MAX_PAYLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
 
 
 @app.middleware("http")
@@ -820,10 +820,20 @@ async def import_config_from_excel(
             crud.create_lot_config(db, lot_config_schema)
             action = "creato"
         
-        # Count imported items
+        # Count imported items in detail
+        reqs = lot_config.get("reqs", [])
+        resource_reqs = [r for r in reqs if r.get("type") == "resource"]
+        ref_proj_reqs = [r for r in reqs if r.get("type") in ("reference", "project")]
+        total_criteria = sum(len(r.get("sub_reqs", [])) for r in ref_proj_reqs)
+        total_metrics = sum(len(r.get("custom_metrics", [])) for r in ref_proj_reqs)
+        
         imported = {
             "cert_aziendali": len(lot_config.get("company_certs", [])),
-            "requisiti": len(lot_config.get("reqs", [])),
+            "cert_professionali": len(resource_reqs),
+            "referenze_progetti": len(ref_proj_reqs),
+            "criteri": total_criteria,
+            "voci_tabellari": total_metrics,
+            "requisiti_totali": len(reqs),
         }
         
         logger.info(f"Imported lot config '{lot_key}': {imported}, warnings: {len(warnings)}")
@@ -1688,6 +1698,13 @@ def verify_certificates_stream(
                 # Process file
                 result = service.verify_certificate(str(pdf_path))
                 result_dict = result.to_dict()
+                
+                # Store relative path from folder root for retry support
+                try:
+                    relative_path = pdf_path.relative_to(folder)
+                    result_dict["filename"] = str(relative_path)
+                except ValueError:
+                    pass  # Keep basename if relative_to fails
                 
                 # Enrich with expected cert names
                 req_code = result_dict.get("req_code", "")

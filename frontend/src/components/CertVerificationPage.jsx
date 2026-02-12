@@ -968,10 +968,12 @@ export default function CertVerificationPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-200">
-                      {filteredResults.map((r, idx) => (
+                      {filteredResults.map((r, idx) => {
+                        const displayFilename = r.filename?.split('/').pop() || r.filename;
+                        return (
                         <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                           <td style={{ width: columnWidths.file }} className="px-4 py-3 text-sm text-slate-900 overflow-hidden" title={r.filename}>
-                            <div className="truncate">{r.filename}</div>
+                            <div className="truncate">{displayFilename}</div>
                           </td>
                           <td style={{ width: columnWidths.requisito }} className="px-4 py-3 text-sm text-slate-700 overflow-hidden">
                             <div className="truncate font-medium">{r.req_code || '-'}</div>
@@ -1043,7 +1045,7 @@ export default function CertVerificationPage() {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                 </div>

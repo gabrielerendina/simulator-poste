@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 try:
     import pytesseract
-    from PIL import Image
+    from PIL import Image, ImageOps, ImageFilter
     import pdf2image
     OCR_AVAILABLE = True
 except ImportError:
@@ -70,11 +70,11 @@ DEFAULT_DATE_PATTERNS = [
     r"date\s*[:\-]?\s*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})",
     r"(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})",
     r"(\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})",  # ISO format
-    r"((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2},?\s+\d{4})",  # Month DD, YYYY
+    r"((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2},?\s*\d{4})",  # Month DD, YYYY or Month DD,YYYY
     r"(\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4})",  # DD Month YYYY
     # Italian month patterns
     r"(\d{1,2}\s+(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+\d{4})",  # DD mese YYYY
-    r"((?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+\d{1,2},?\s+\d{4})",  # mese DD, YYYY
+    r"((?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+\d{1,2},?\s*\d{4})",  # mese DD, YYYY or mese DD,YYYY
 ]
 
 DEFAULT_TECH_TERMS = {
@@ -92,7 +92,7 @@ DEFAULT_TECH_TERMS = {
     'coordinatore', 'direttore', 'capo', 'tecnico', 'funzionale',
 }
 
-DEFAULT_OCR_DPI = 200
+DEFAULT_OCR_DPI = 600
 DEFAULT_MAX_FILE_SIZE_MB = 20  # Skip OCR for files larger than this (fix #5)
 
 
@@ -390,6 +390,18 @@ class CertVerificationService:
                     text_parts.append(text)
         return "\n".join(text_parts)
     
+    def _preprocess_image(self, image: "PILImage.Image") -> "PILImage.Image":
+        """
+        Preprocess image for better OCR on certificates with colored backgrounds
+        """
+        # Convert to grayscale
+        gray = image.convert('L')
+        # Apply autocontrast to enhance contrast
+        enhanced = ImageOps.autocontrast(gray, cutoff=2)
+        # Apply slight sharpening
+        sharpened = enhanced.filter(ImageFilter.SHARPEN)
+        return sharpened
+    
     def _ocr_with_rotation(self, image: "PILImage.Image") -> str:
         """
         Try OCR on image, rotating up to 3 times; test multiple Tesseract configs per rotation
@@ -400,21 +412,25 @@ class CertVerificationService:
         best_score = 0
         best_rotation = 0
         
-        for rotation in rotations:
-            rotated = image.rotate(-rotation, expand=True) if rotation > 0 else image
-            for cfg in configs:
-                try:
-                    text = pytesseract.image_to_string(rotated, lang='eng+ita', config=cfg)
-                except Exception:
-                    continue
-                score = self._score_ocr_text(text)
-                if score > best_score:
-                    best_score = score
-                    best_text = text
-                    best_rotation = rotation
-                    if score >= 10:
-                        break
-            if best_score >= 10:
+        # Try with original image first
+        for image_variant in [image, self._preprocess_image(image)]:
+            for rotation in rotations:
+                rotated = image_variant.rotate(-rotation, expand=True) if rotation > 0 else image_variant
+                for cfg in configs:
+                    try:
+                        text = pytesseract.image_to_string(rotated, lang='eng+ita', config=cfg)
+                    except Exception:
+                        continue
+                    score = self._score_ocr_text(text)
+                    if score > best_score:
+                        best_score = score
+                        best_text = text
+                        best_rotation = rotation
+                        if score >= 15:  # Higher threshold to try both variants
+                            break
+                if best_score >= 15:
+                    break
+            if best_score >= 15:
                 break
         
         # Log only once with the final result (reduced verbosity)
@@ -559,6 +575,9 @@ class CertVerificationService:
         
         return None
     
+    # Date pattern with context keywords for better identification
+    DATE_PATTERN_GENERIC = r'(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2},?\s*\d{4}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*\d{4})'
+    
     def extract_dates(self, text: str) -> Tuple[Optional[str], Optional[str]]:
         """
         Extract validity dates from text
@@ -570,9 +589,52 @@ class CertVerificationService:
             Tuple of (valid_from, valid_until) as strings
         """
         text_lower = text.lower()
-        dates_found = []
+        valid_from = None
+        valid_until = None
         
-        # Use configurable date patterns
+        # First, try to find dates with explicit context keywords
+        # Patterns for expiry/end dates (allow newlines between keyword and date)
+        expiry_patterns = [
+            rf'expir(?:es?|ation|y)\s*(?:date)?\s*[:\-]?\s*{self.DATE_PATTERN_GENERIC}',
+            rf'valid\s*(?:until|thru|through|to)\s*[:\-]?\s*{self.DATE_PATTERN_GENERIC}',
+            rf'end(?:s|ing)?\s*(?:date)?\s*[:\-]?\s*{self.DATE_PATTERN_GENERIC}',
+        ]
+        
+        # Patterns for issue/start dates
+        issue_patterns = [
+            rf'issue[d]?\s*(?:date|on)?\s*[:\-]?\s*{self.DATE_PATTERN_GENERIC}',
+            rf'valid\s*(?:from|since)\s*[:\-]?\s*{self.DATE_PATTERN_GENERIC}',
+            rf'effective\s*(?:from|date|day)?\s*[:\-]?\s*{self.DATE_PATTERN_GENERIC}',
+            rf'start(?:s|ing)?\s*(?:date)?\s*[:\-]?\s*{self.DATE_PATTERN_GENERIC}',
+            rf'date\s*(?:registered|of\s*issue)\s*[:\-]?\s*{self.DATE_PATTERN_GENERIC}',
+        ]
+        
+        # Try to find expiry date with context (use re.DOTALL to match across newlines)
+        for pattern in expiry_patterns:
+            match = re.search(pattern, text_lower, re.IGNORECASE | re.DOTALL)
+            if match:
+                date_str = match.group(1)
+                if self._parse_date(date_str):
+                    valid_until = date_str
+                    logger.debug(f"Found expiry date with context: {valid_until}")
+                    break
+        
+        # Try to find issue date with context
+        for pattern in issue_patterns:
+            match = re.search(pattern, text_lower, re.IGNORECASE | re.DOTALL)
+            if match:
+                date_str = match.group(1)
+                if self._parse_date(date_str):
+                    valid_from = date_str
+                    logger.debug(f"Found issue date with context: {valid_from}")
+                    break
+        
+        # If we found both with context, return them
+        if valid_from and valid_until:
+            return valid_from, valid_until
+        
+        # Fallback: find all dates and sort chronologically
+        dates_found = []
         for pattern in self.date_patterns:
             matches = re.findall(pattern, text_lower, re.IGNORECASE)
             dates_found.extend(matches)
@@ -582,22 +644,35 @@ class CertVerificationService:
         for date_str in dates_found[:10]:  # Limit to first 10 matches
             parsed = self._parse_date(date_str)
             if parsed:
-                parsed_dates.append((parsed, date_str))
+                # Avoid duplicates
+                if not any(p[1] == date_str for p in parsed_dates):
+                    parsed_dates.append((parsed, date_str))
         
         parsed_dates.sort(key=lambda x: x[0])
         
-        valid_from = None
-        valid_until = None
-        
-        if len(parsed_dates) >= 2:
-            valid_from = parsed_dates[0][1]
-            valid_until = parsed_dates[-1][1]
-        elif len(parsed_dates) == 1:
-            # Check context to determine if it's issue or expiry date
-            if any(kw in text_lower for kw in ["expir", "valid until", "valid thru"]):
-                valid_until = parsed_dates[0][1]
-            else:
+        # Fill in missing dates from sorted list
+        if not valid_from and not valid_until:
+            if len(parsed_dates) >= 2:
                 valid_from = parsed_dates[0][1]
+                valid_until = parsed_dates[-1][1]
+            elif len(parsed_dates) == 1:
+                # Check context to determine if it's issue or expiry date
+                if any(kw in text_lower for kw in ["expir", "valid until", "valid thru"]):
+                    valid_until = parsed_dates[0][1]
+                else:
+                    valid_from = parsed_dates[0][1]
+        elif not valid_from and parsed_dates:
+            # We have valid_until, find valid_from from remaining dates
+            for parsed, date_str in parsed_dates:
+                if date_str != valid_until:
+                    valid_from = date_str
+                    break
+        elif not valid_until and parsed_dates:
+            # We have valid_from, find valid_until from remaining dates
+            for parsed, date_str in reversed(parsed_dates):
+                if date_str != valid_from:
+                    valid_until = date_str
+                    break
         
         return valid_from, valid_until
     
@@ -617,6 +692,9 @@ class CertVerificationService:
             if it_month in date_str_normalized:
                 date_str_normalized = date_str_normalized.replace(it_month, en_month)
                 break
+        
+        # Normalize comma without space: "January 31,2028" -> "January 31, 2028"
+        date_str_normalized = re.sub(r',(\d)', r', \1', date_str_normalized)
         
         date_formats = [
             "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d",
@@ -769,6 +847,7 @@ class CertVerificationService:
             logger.debug(f"Extracted: vendor={result.vendor_detected}, code={result.cert_code_detected}, cert_name={result.cert_name_detected}, person={result.resource_name_detected}")
             logger.debug(f"OCR text first 200 chars: {text[:200] if text else 'EMPTY'}")
             logger.debug(f"OCR text FULL length: {len(text) if text else 0}")
+            logger.debug(f"OCR text COMPLETE: {text if text else 'EMPTY'}")  # DEBUG FULL TEXT
             
             # Extract dates
             valid_from, valid_until = self.extract_dates(text)
@@ -869,7 +948,8 @@ class CertVerificationService:
             r'VCP[\-\s]*(?:\d{2}|[A-Z]{2,})?\s*([A-Za-z][A-Za-z\s\-]+?)(?:\s+Certification|\s+Issued)',
             # PMI/PMP / ITIL
             r'(Project\s+Management\s+Professional)',
-            r'ITIL\s+(?:v\d\s+)?([A-Za-z][A-Za-z\s\-]+?)(?:\s+ITIL|\s+Axelos|\s+Issued)',
+            r'(ITIL\s+\d\s+[A-Za-z][A-Za-z\s\-]+?)(?:\s+Certificate|\s+ITIL|\s+Axelos|\s+Issued)',  # ITIL 4 Managing Professional
+            r'ITIL\s+(?:v\d\s+)?([A-Za-z][A-Za-z\s\-]+?)(?:\s+Certificate|\s+ITIL|\s+Axelos|\s+Issued)',
             # PRINCE2 / PeopleCert / Axelos - full name patterns FIRST
             r'(PRINCE2®?\s+Foundation\s+Certificate(?:\s+in\s+Project\s+Management)?)',
             r'(PRINCE2®?\s+Practitioner\s+Certificate(?:\s+in\s+Project\s+Management)?)',
@@ -878,6 +958,42 @@ class CertVerificationService:
             r'Axelos[:\s]+([A-Za-z][A-Za-z\s\-0-9]+?)(?:\s+Certificate|\s+Issued|\s+Valid|\s*$)',
             # PRINCE2 fallback - only level name if full pattern didn't match
             r'(PRINCE2®?\s+(?:Foundation|Practitioner|Agile))',
+            # IAPP - Privacy certifications - specific patterns first
+            r'(CIPP(?:/[A-Z]{1,2})?)',  # CIPP, CIPP/E, CIPP/US, CIPP/C, etc.
+            r'(CIPM)',  # Certified Information Privacy Manager
+            r'(CIPT)',  # Certified Information Privacy Technologist
+            r'(FIP)',   # Fellow of Information Privacy
+            r'confer\s+upon.*?the\s+designation\s+of\s+([A-Z]{3,5}(?:/[A-Z]{1,2})?)',  # IAPP "confer upon X the designation of CIPM"
+            r'(Certified\s+Information\s+Privacy\s+(?:Professional|Manager|Technologist))',  # Full IAPP cert name
+            r'knowledge\s+of[.\s]+information\s+privacy\s+management.*(CIPM)',  # Map "information privacy management" context to CIPM
+            # ISACA - Governance/Audit certifications
+            r'(CGEIT)',  # Certified in Governance of Enterprise IT
+            r'(CISA)',   # Certified Information Systems Auditor
+            r'(CISM)',   # Certified Information Security Manager
+            r'(CRISC)',  # Certified in Risk and Information Systems Control
+            r'(CDPSE)',  # Certified Data Privacy Solutions Engineer
+            r'qualified\s+as\s+(?:a\s+)?Certified\s+in\s+(?:the\s+)?(Governance\s+of\s+Enterprise\s+IT)',  # CGEIT full name
+            r'Certified\s+in\s+(?:the\s+)?(Governance\s+of\s+Enterprise\s+IT)',
+            r'Certified\s+Information\s+(Systems?\s+Auditor)',
+            r'Certified\s+Information\s+(Security\s+Manager)',
+            r'Certified\s+in\s+(Risk\s+and\s+Information\s+Systems?\s+Control)',
+            # The Open Group - TOGAF
+            r'(TOGAF\s+\d+\s+Certified)',  # TOGAF 9 Certified
+            r'(TOGAF\s+\d+\s+Foundation)',
+            r'(TOGAF\s+\d+\s+Practitioner)',
+            r'TOGAF\s+\d+\s+Certification.*at\s+the\s+(TOGAF\s+\d+\s+Certified)\s+level',
+            r'requirements\s+of\s+the\s+(TOGAF\s+\d+)\s+Certification',
+            r'(ArchiMate\s+\d+\s+(?:Foundation|Practitioner|Certified))',
+            # APMG - Agile/Programme Management
+            r'(Agile\s+Project\s+Management\s+(?:Foundation|Practitioner))',
+            r'(AgilePM\s+(?:Foundation|Practitioner))',
+            r'(MSP\s+(?:Foundation|Practitioner|Advanced\s+Practitioner))',
+            r'(Managing\s+Successful\s+Programmes?\s+(?:Foundation|Practitioner))',
+            r'(MoR\s+(?:Foundation|Practitioner))',  # Management of Risk
+            r'(Management\s+of\s+Risk\s+(?:Foundation|Practitioner))',
+            r'(P3O\s+(?:Foundation|Practitioner))',
+            r'(Change\s+Management\s+(?:Foundation|Practitioner))',
+            r'APMG.*?(Agile\s+Project\s+Management)\s*(?:Foundation|Practitioner)',  # APMG Agile PM
             # Generic patterns
             r'Certificate\s+of\s+([A-Za-z][A-Za-z\s\-]+?)(?:\s+Issued|\s+Date|\s+This)',
             r'certified\s+as\s+(?:a|an)?\s*([A-Za-z][A-Za-z\s\-]+?)(?:\s+on|\s+by|\s+Issued|\s+Date)',
@@ -916,7 +1032,26 @@ class CertVerificationService:
                 
                 # Validate length
                 if 3 <= len(cert_name) <= 120:
+                    # IAPP-specific mapping: infer cert code from context
+                    if vendor == 'iapp' and cert_name.lower() in ['manager', 'professional', 'technologist']:
+                        text_lower = text.lower()
+                        if 'privacy management' in text_lower or 'privacy manager' in text_lower:
+                            cert_name = 'CIPM'  # Certified Information Privacy Manager
+                        elif 'privacy professional' in text_lower:
+                            cert_name = 'CIPP'  # Certified Information Privacy Professional
+                        elif 'privacy technologist' in text_lower:
+                            cert_name = 'CIPT'  # Certified Information Privacy Technologist
                     return cert_name
+        
+        # Fallback: IAPP inference from text when no pattern matched
+        if vendor == 'iapp':
+            text_lower = text.lower()
+            if 'privacy management' in text_lower or 'privacy manager' in text_lower:
+                return 'CIPM'
+            elif 'privacy professional' in text_lower:
+                return 'CIPP'
+            elif 'privacy technologist' in text_lower:
+                return 'CIPT'
         
         return None
     
@@ -1054,7 +1189,16 @@ class CertVerificationService:
             if req_filter and result.req_code != req_filter:
                 continue
             
-            results.append(result.to_dict())
+            # Store relative path from folder root for retry support
+            result_dict = result.to_dict()
+            try:
+                relative_path = pdf_path.relative_to(folder)
+                result_dict["filename"] = str(relative_path)
+            except ValueError:
+                # Fallback to basename if relative_to fails
+                pass
+            
+            results.append(result_dict)
         
         # Calculate summary
         summary = {

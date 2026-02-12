@@ -46,6 +46,7 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Aggiungi una configurazione Nginx per gestire il routing SPA e API proxy
 RUN echo "server { \
     listen 80; \
+    client_max_body_size 100M; \
     location /api/ { \
         proxy_pass http://${BACKEND_HOST}:8000/api/; \
         proxy_http_version 1.1; \
@@ -55,6 +56,8 @@ RUN echo "server { \
         proxy_set_header X-Real-IP \$remote_addr; \
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; \
         proxy_set_header X-Forwarded-Proto \$scheme; \
+        proxy_read_timeout 300s; \
+        proxy_connect_timeout 300s; \
     } \
     location / { \
         root /usr/share/nginx/html; \

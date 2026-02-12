@@ -215,4 +215,70 @@ DEFAULT_VENDORS = {
             r"process\s*automation",
         ]
     },
+    "iapp": {
+        "name": "IAPP",
+        "aliases": ["iapp", "international association of privacy professionals"],
+        "cert_patterns": [
+            r"cipp",
+            r"cipm",
+            r"cipt",
+            r"certified\s*information\s*privacy\s*professional",
+            r"certified\s*information\s*privacy\s*manager",
+            r"certified\s*information\s*privacy\s*technologist",
+            r"information\s*privacy\s*management",
+            r"fellow\s*of\s*information\s*privacy",
+            r"fip",
+        ]
+    },
+    "isaca": {
+        "name": "ISACA",
+        "aliases": ["isaca", "information systems audit and control association"],
+        "cert_patterns": [
+            r"cgeit",
+            r"cisa",
+            r"cism",
+            r"crisc",
+            r"cdpse",
+            r"csx-p",
+            r"certified\s*in.*governance.*enterprise\s*it",
+            r"governance\s*of\s*enterprise\s*it",
+            r"certified\s*information\s*systems?\s*auditor",
+            r"certified\s*information\s*security\s*manager",
+            r"certified\s*in\s*risk\s*and\s*information\s*systems?\s*control",
+            r"certified\s*data\s*privacy\s*solutions?\s*engineer",
+        ]
+    },
+    "theopengroup": {
+        "name": "The Open Group",
+        "aliases": ["the open group", "opengroup", "togaf"],
+        "cert_patterns": [
+            r"togaf",
+            r"archimate",
+            r"it4it",
+            r"open\s*ca",
+            r"open\s*cds",
+            r"open\s*ctpp",
+            r"open\s*master\s*certified\s*architect",
+            r"certified\s*architect",
+            r"certification\s*for\s*people",
+        ]
+    },
+    "apmg": {
+        "name": "APMG International",
+        "aliases": ["apmg", "apmg international"],
+        "cert_patterns": [
+            r"agile\s*project\s*management",
+            r"agile\s*pm",
+            r"change\s*management",
+            r"msP",
+            r"managing\s*successful\s*programmes",
+            r"mor",
+            r"management\s*of\s*risk",
+            r"p3o",
+            r"portfolio.*programme.*project\s*offices",
+            r"better\s*business\s*cases",
+            r"practitioner\s*examination",
+            r"foundation\s*examination",
+        ]
+    },
 }

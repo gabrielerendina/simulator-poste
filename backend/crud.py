@@ -404,8 +404,10 @@ def seed_ocr_settings(db: Session) -> None:
                 r"date\s*[:\-]?\s*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})",
                 r"(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})",
                 r"(\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})",
-                r"((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2},?\s+\d{4})",
-                r"(\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4})",
+                r"((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2},?\s*\d{4})",
+                r"(\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*\d{4})",
+                r"(\d{1,2}\s+(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+\d{4})",
+                r"((?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+\d{1,2},?\s*\d{4})",
             ]),
             "description": "Regex patterns to extract dates from OCR text (JSON array)"
         },
@@ -426,7 +428,7 @@ def seed_ocr_settings(db: Session) -> None:
         },
         {
             "key": "ocr_dpi",
-            "value": "200",
+            "value": "600",
             "description": "DPI resolution for PDF to image conversion"
         },
     ]
