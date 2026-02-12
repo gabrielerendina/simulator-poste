@@ -134,13 +134,29 @@ DEFAULT_VENDORS = {
     },
     "itil": {
         "name": "ITIL",
-        "aliases": ["itil", "axelos"],
+        "aliases": ["itil"],
         "cert_patterns": [
             r"itil\s*foundation",
             r"itil\s*practitioner",
             r"itil\s*intermediate",
             r"itil\s*expert",
             r"itil\s*v\d",
+        ]
+    },
+    "peoplecert": {
+        "name": "PeopleCert - Axelos",
+        "aliases": ["peoplecert", "people cert", "axelos", "prince2", "prince 2"],
+        "cert_patterns": [
+            r"prince2?\s*foundation",
+            r"prince2?\s*practitioner",
+            r"prince2?\s*agile",
+            r"prince2?\s*professional",
+            r"prince\s*2\s*foundation",
+            r"prince\s*2\s*practitioner",
+            r"project\s*management\s*(?:foundation|practitioner)",
+            r"certificate\s*in\s*project\s*management",
+            r"peoplecert",
+            r"axelos\s*global\s*best\s*practice",
         ]
     },
     "scrum": {
