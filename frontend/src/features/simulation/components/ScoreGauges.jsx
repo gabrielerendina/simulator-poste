@@ -42,13 +42,15 @@ export default function ScoreGauges({ results, lotData, techInputs, onExport, ex
     lotData.reqs.forEach(req => {
       const input = techInputs[req.id] || {};
       const weightedScore = results?.weighted_scores?.[req.id] || 0;
+      const garaWeight = req.gara_weight || 0;
 
       if (req.type === 'reference' || req.type === 'project') {
-        // Attribute to assigned_company
-        const assignedCompany = input.assigned_company;
-        if (assignedCompany && companyContributions[assignedCompany]) {
-          companyContributions[assignedCompany][req.type] += weightedScore;
-          companyContributions[assignedCompany].total += weightedScore;
+        // Attribute MAX gara_weight (not calculated score) to assigned_company
+        // This represents the potential/responsibility, not the evaluation
+        const assignedCompany = input.assigned_company || 'Lutech';
+        if (companyContributions[assignedCompany]) {
+          companyContributions[assignedCompany][req.type] += garaWeight;
+          companyContributions[assignedCompany].total += garaWeight;
         }
       } else if (req.type === 'resource') {
         // Split among cert_company_counts (how many certs each company contributes)
