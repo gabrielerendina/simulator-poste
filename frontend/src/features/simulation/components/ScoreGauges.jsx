@@ -20,8 +20,10 @@ export default function ScoreGauges({ results, lotData, techInputs, masterData, 
     return null;
   }
 
-  // Get RTI companies for this lot (lot-specific or fallback to global)
-  const rtiCompanies = (lotData?.rti_companies?.length > 0 ? lotData.rti_companies : masterData?.rti_companies) || [];
+  // RTI companies: Lutech always present, partners added if rti_enabled
+  const rtiCompanies = lotData?.rti_enabled 
+    ? ['Lutech', ...(lotData.rti_companies || [])] 
+    : ['Lutech'];
   const hasMultipleCompanies = rtiCompanies.length > 1;
 
   // Calculate per-company contributions

@@ -7,7 +7,7 @@ import { useSimulation } from '../features/simulation/context/SimulationContext'
 
 export default function TechEvaluator() {
     const { t } = useTranslation();
-    const { config, masterData } = useConfig();
+    const { config } = useConfig();
     const {
         selectedLot,
         techInputs: inputs,
@@ -269,8 +269,10 @@ export default function TechEvaluator() {
                                                         req.selected_prof_certs.map(cert => {
                                                             const count = (cur.cert_counts?.[cert]) || 0;
                                                             const certCompanies = cur.cert_companies?.[cert] || [];
-                                                            // Use lot-specific RTI companies if configured, otherwise fall back to masterData
-                                                            const rtiCompanies = (lotData?.rti_companies?.length > 0 ? lotData.rti_companies : masterData?.rti_companies) || ['Lutech'];
+                                                            // RTI companies: Lutech always present, partners added if rti_enabled
+                                                            const rtiCompanies = lotData?.rti_enabled 
+                                                                ? ['Lutech', ...(lotData.rti_companies || [])] 
+                                                                : ['Lutech'];
 
                                                             const updateCount = (delta) => {
                                                                 const counts = { ...(cur.cert_counts || {}) };
@@ -474,8 +476,10 @@ export default function TechEvaluator() {
                             })();
 
                             const reqWeightedScore = results?.weighted_scores?.[req.id] || 0;
-                            // Use lot-specific RTI companies if configured, otherwise fall back to masterData
-                            const rtiCompanies = (lotData?.rti_companies?.length > 0 ? lotData.rti_companies : masterData?.rti_companies) || ['Lutech'];
+                            // RTI companies: Lutech always present, partners added if rti_enabled
+                            const rtiCompanies = lotData?.rti_enabled 
+                                ? ['Lutech', ...(lotData.rti_companies || [])] 
+                                : ['Lutech'];
                             const assignedCompany = cur.assigned_company || '';
 
                             const setAssignedCompany = (company) => {

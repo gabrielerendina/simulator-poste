@@ -486,48 +486,79 @@ export default function ConfigPage({ onAddLot, onDeleteLot }) {
                         </div>
                     </div>
 
-                    {/* RTI Companies for this lot */}
-                    {masterData?.rti_companies && masterData.rti_companies.length > 1 && (
-                        <div className="mt-6 pt-6 border-t border-slate-200">
-                            <div className="flex items-center gap-2 mb-3">
-                                <Building2 className="w-4 h-4 text-indigo-600" />
-                                <label className="text-sm font-medium text-slate-700">{t('config.rti_companies_lot')}</label>
-                            </div>
-                            <p className="text-xs text-slate-500 mb-3">{t('config.rti_companies_lot_desc')}</p>
-                            <div className="flex flex-wrap gap-2">
-                                {masterData.rti_companies.map((company, idx) => {
-                                    const lotRtiCompanies = currentLot.rti_companies || [];
-                                    const isSelected = lotRtiCompanies.includes(company);
-                                    return (
-                                        <button
-                                            key={idx}
-                                            type="button"
-                                            onClick={() => {
-                                                updateLot(lot => {
-                                                    if (!lot.rti_companies) lot.rti_companies = [];
-                                                    if (isSelected) {
-                                                        lot.rti_companies = lot.rti_companies.filter(c => c !== company);
-                                                    } else {
-                                                        lot.rti_companies.push(company);
-                                                    }
-                                                });
-                                            }}
-                                            className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                                                isSelected
-                                                    ? 'bg-indigo-100 border-indigo-400 text-indigo-800 font-semibold'
-                                                    : 'bg-slate-50 border-slate-300 text-slate-600 hover:border-indigo-400 hover:bg-indigo-50'
-                                            }`}
-                                        >
-                                            {company}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            {(!currentLot.rti_companies || currentLot.rti_companies.length === 0) && (
-                                <p className="text-xs text-amber-600 mt-2">{t('config.rti_companies_empty_warning')}</p>
-                            )}
+                    {/* RTI Toggle and Partner Selection */}
+                    <div className="mt-6 pt-6 border-t border-slate-200">
+                        <div className="flex items-center gap-3 mb-3">
+                            <Building2 className="w-4 h-4 text-indigo-600" />
+                            <label className="text-sm font-medium text-slate-700">{t('config.rti_enabled_label')}</label>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    updateLot(lot => {
+                                        lot.rti_enabled = !lot.rti_enabled;
+                                        // Clear selected partners if disabling RTI
+                                        if (!lot.rti_enabled) {
+                                            lot.rti_companies = [];
+                                        }
+                                    });
+                                }}
+                                className={`relative w-11 h-6 rounded-full transition-colors ${
+                                    currentLot.rti_enabled ? 'bg-indigo-600' : 'bg-slate-300'
+                                }`}
+                            >
+                                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                                    currentLot.rti_enabled ? 'translate-x-5' : ''
+                                }`} />
+                            </button>
+                            <span className={`text-xs font-medium ${currentLot.rti_enabled ? 'text-indigo-600' : 'text-slate-500'}`}>
+                                {currentLot.rti_enabled ? t('config.rti_enabled_yes') : t('config.rti_enabled_no')}
+                            </span>
                         </div>
-                    )}
+                        
+                        {/* Partner Selection - only shown when RTI is enabled */}
+                        {currentLot.rti_enabled && masterData?.rti_partners && masterData.rti_partners.length > 0 && (
+                            <div className="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                                <p className="text-xs text-indigo-700 mb-3">{t('config.rti_partners_desc')}</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {masterData.rti_partners.map((company, idx) => {
+                                        const lotRtiCompanies = currentLot.rti_companies || [];
+                                        const isSelected = lotRtiCompanies.includes(company);
+                                        return (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => {
+                                                    updateLot(lot => {
+                                                        if (!lot.rti_companies) lot.rti_companies = [];
+                                                        if (isSelected) {
+                                                            lot.rti_companies = lot.rti_companies.filter(c => c !== company);
+                                                        } else {
+                                                            lot.rti_companies.push(company);
+                                                        }
+                                                    });
+                                                }}
+                                                className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                                                    isSelected
+                                                        ? 'bg-indigo-600 border-indigo-600 text-white font-semibold'
+                                                        : 'bg-white border-indigo-300 text-indigo-700 hover:border-indigo-500 hover:bg-indigo-100'
+                                                }`}
+                                            >
+                                                {company}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {currentLot.rti_companies && currentLot.rti_companies.length > 0 && (
+                                    <p className="text-xs text-indigo-600 mt-3">
+                                        {t('config.rti_selected_partners')}: <strong>Lutech + {currentLot.rti_companies.join(', ')}</strong>
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        {currentLot.rti_enabled && (!masterData?.rti_partners || masterData.rti_partners.length === 0) && (
+                            <p className="text-xs text-amber-600 mt-2">{t('config.rti_no_partners_warning')}</p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Company Certifications */}
