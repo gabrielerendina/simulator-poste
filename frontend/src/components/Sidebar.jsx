@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Sliders, Settings, X, FileSearch, Building2, AlertCircle } from 'lucide-react';
+import { Settings, X, FileSearch, Building2, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../utils/formatters';
 import { useConfig } from '../features/config/context/ConfigContext';
@@ -216,58 +216,89 @@ export default function Sidebar({
 
                     {/* RTI Quota Breakdown */}
                     {isRti && allRtiCompanies.length > 0 && (
-                        <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                            <div className="flex items-center gap-2 mb-3">
-                                <Building2 className="w-4 h-4 text-indigo-600" />
-                                <label className="text-xs font-bold text-indigo-700 uppercase">{t('simulation.rti_breakdown')}</label>
+                        <div className="rounded-xl border border-indigo-200 overflow-hidden">
+                            {/* Header */}
+                            <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                    <Building2 className="w-4 h-4 text-white" />
+                                    <span className="text-sm font-semibold text-white">{t('simulation.rti_breakdown')}</span>
+                                </div>
+                                <div className="text-[10px] text-indigo-200 mt-0.5">
+                                    {t('simulation.your_price')}: <span className="font-mono font-semibold text-white">{formatCurrency(p_my)}</span>
+                                </div>
                             </div>
                             
                             {quotaError && (
-                                <div className="flex items-center gap-2 mb-2 p-2 bg-red-100 rounded text-red-700 text-xs">
-                                    <AlertCircle className="w-3 h-3" />
+                                <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-red-700 text-xs">
+                                    <AlertCircle className="w-3 h-3 flex-shrink-0" />
                                     {quotaError}
                                 </div>
                             )}
 
-                            <div className="space-y-2">
-                                {allRtiCompanies.map(company => {
+                            {/* Company rows */}
+                            <div className="bg-white divide-y divide-slate-100">
+                                {allRtiCompanies.map((company, idx) => {
                                     const quota = parseFloat(localQuotas[company]) || 0;
                                     const amount = p_my * (quota / 100);
+                                    const isLutech = company === 'Lutech';
+                                    const barColor = isLutech ? 'bg-blue-500' : 'bg-indigo-400';
+                                    const textColor = isLutech ? 'text-blue-700' : 'text-slate-700';
+                                    
                                     return (
-                                        <div key={company} className="flex items-center gap-2 bg-white rounded-md p-2 border border-indigo-100">
-                                            <span className={`text-xs font-semibold flex-1 ${company === 'Lutech' ? 'text-blue-700' : 'text-slate-700'}`}>
-                                                {company}
-                                            </span>
-                                            <div className="flex items-center gap-1">
-                                                <input
-                                                    type="number"
-                                                    step="0.5"
-                                                    min="0"
-                                                    max="100"
-                                                    value={quota}
-                                                    onChange={(e) => handleQuotaChange(company, e.target.value)}
-                                                    className="w-14 text-xs font-mono text-right border border-slate-200 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
-                                                />
-                                                <span className="text-xs text-slate-400">%</span>
+                                        <div key={company} className="relative">
+                                            {/* Background progress bar */}
+                                            <div 
+                                                className={`absolute inset-y-0 left-0 ${isLutech ? 'bg-blue-50' : 'bg-indigo-50'} transition-all duration-300`}
+                                                style={{ width: `${Math.min(quota, 100)}%` }}
+                                            />
+                                            
+                                            <div className="relative px-4 py-3 flex items-center gap-3">
+                                                {/* Company indicator */}
+                                                <div className={`w-1 h-8 rounded-full ${barColor}`} />
+                                                
+                                                {/* Company name */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className={`text-sm font-semibold ${textColor} truncate`}>
+                                                        {company}
+                                                    </div>
+                                                    <div className="text-[11px] text-slate-500 font-mono">
+                                                        {formatCurrency(amount)}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Quota input */}
+                                                <div className="flex items-center bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                                                    <input
+                                                        type="number"
+                                                        step="0.5"
+                                                        min="0"
+                                                        max="100"
+                                                        value={quota}
+                                                        onChange={(e) => handleQuotaChange(company, e.target.value)}
+                                                        className="w-12 text-sm font-mono text-right px-2 py-1.5 focus:outline-none focus:bg-indigo-50"
+                                                    />
+                                                    <span className="text-xs text-slate-400 pr-2 bg-slate-50 py-1.5 pl-0.5">%</span>
+                                                </div>
                                             </div>
-                                            <span className="text-xs font-mono text-indigo-600 w-20 text-right">
-                                                {formatCurrency(amount)}
-                                            </span>
                                         </div>
                                     );
                                 })}
                             </div>
 
-                            {/* Total row */}
-                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-indigo-200">
-                                <span className="text-xs font-bold text-indigo-700">{t('simulation.rti_total')}</span>
-                                <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold ${isQuotaValid ? 'text-green-600' : 'text-red-600'}`}>
-                                        {totalQuota.toFixed(1)}%
-                                    </span>
-                                    <span className="text-xs font-mono font-bold text-indigo-700">
-                                        {formatCurrency(p_my)}
-                                    </span>
+                            {/* Footer with total */}
+                            <div className="bg-slate-50 px-4 py-2.5 border-t border-slate-200">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">{t('simulation.rti_total')}</span>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`text-sm font-bold ${isQuotaValid ? 'text-green-600' : 'text-red-500'}`}>
+                                            {totalQuota.toFixed(1)}%
+                                        </span>
+                                        {!isQuotaValid && (
+                                            <span className="text-[10px] text-red-500">
+                                                {totalQuota < 100 ? `+${(100 - totalQuota).toFixed(1)}%` : `-${(totalQuota - 100).toFixed(1)}%`}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
