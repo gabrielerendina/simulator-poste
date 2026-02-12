@@ -138,15 +138,20 @@ class ExcelReportGenerator:
         if 'Sheet' in self.wb.sheetnames:
             del self.wb['Sheet']
         
-        self._create_dashboard_sheet()
+        # Create sheets in order (we need Tecnico and Economico first for Dashboard refs)
         self._create_technical_sheet()
         self._create_economic_sheet()
         
         if self.is_rti:
             self._create_rti_sheet()
         
+        self._create_dashboard_sheet()
         self._create_config_sheet()
         self._create_named_ranges()
+        
+        # Hide gridlines on all sheets
+        for sheet_name in self.wb.sheetnames:
+            self.wb[sheet_name].sheet_view.showGridLines = False
         
         self.wb.active = self.wb['Dashboard']
         
@@ -157,7 +162,7 @@ class ExcelReportGenerator:
 
     def _create_dashboard_sheet(self):
         """Create the executive dashboard sheet"""
-        ws = self.wb.create_sheet('Dashboard')
+        ws = self.wb.create_sheet('Dashboard', 0)  # Insert at position 0
         ws.sheet_properties.tabColor = COLORS['primary']
         
         ws.column_dimensions['A'].width = 3
@@ -165,217 +170,115 @@ class ExcelReportGenerator:
         ws.column_dimensions['C'].width = 20
         ws.column_dimensions['D'].width = 15
         ws.column_dimensions['E'].width = 15
-        ws.column_dimensions['F'].width = 15
-        ws.column_dimensions['G'].width = 3
+        ws.column_dimensions['F'].width = 3
         
         row = 2
         
         # Header
-        ws.merge_cells(f'B{row}:F{row}')
-        ws[f'B{row}'] = f'REPORT STRATEGICO - {self.lot_key}'
+        ws.merge_cells(f'B{row}:E{row}')
+        ws[f'B{row}'] = f'REPORT - {self.lot_key}'
         ws[f'B{row}'].font = TITLE_FONT
         ws[f'B{row}'].alignment = CENTER
         row += 1
         
-        ws.merge_cells(f'B{row}:F{row}')
+        ws.merge_cells(f'B{row}:E{row}')
         ws[f'B{row}'] = f'Generato il {datetime.now().strftime("%d/%m/%Y alle %H:%M")}'
         ws[f'B{row}'].font = Font(size=10, italic=True, color=COLORS['muted'])
         ws[f'B{row}'].alignment = CENTER
-        row += 2
+        row += 3
         
-        # Verdetto
-        ws.merge_cells(f'B{row}:F{row}')
-        verdict_cell = ws[f'B{row}']
-        if self.win_probability >= 60:
-            verdict_cell.value = 'PROBABILITÀ ALTA'
-            verdict_cell.font = Font(size=18, bold=True, color=COLORS['success'])
-        elif self.win_probability >= 40:
-            verdict_cell.value = 'PROBABILITÀ MEDIA'
-            verdict_cell.font = Font(size=18, bold=True, color=COLORS['warning'])
-        else:
-            verdict_cell.value = 'PROBABILITÀ BASSA'
-            verdict_cell.font = Font(size=18, bold=True, color=COLORS['danger'])
-        verdict_cell.alignment = CENTER
-        row += 2
-        
-        # KPI boxes
+        # KPI boxes - only 4: Total, Tecnico, Economico, Sconto (no Win%)
         kpi_row = row
         
+        # PUNTEGGIO TOTALE - formula referencing Tecnico + Economico
         ws[f'B{kpi_row}'] = 'PUNTEGGIO TOTALE'
         ws[f'B{kpi_row}'].font = KPI_LABEL_FONT
         ws[f'B{kpi_row}'].alignment = CENTER
-        ws[f'B{kpi_row+1}'] = self.total_score
+        ws[f'B{kpi_row}'].border = THIN_BORDER
+        # Formula: Tecnico total + Economico score
+        ws[f'B{kpi_row+1}'] = f"=Tecnico!G{self.tech_cat_total_row}+Economico!C{self.econ_score_row}"
         ws[f'B{kpi_row+1}'].font = KPI_FONT
         ws[f'B{kpi_row+1}'].alignment = CENTER
         ws[f'B{kpi_row+1}'].number_format = '0.00'
+        ws[f'B{kpi_row+1}'].fill = FORMULA_FILL
+        ws[f'B{kpi_row+1}'].border = THIN_BORDER
         
+        # TECNICO - formula referencing Tecnico sheet
         ws[f'C{kpi_row}'] = 'TECNICO'
         ws[f'C{kpi_row}'].font = KPI_LABEL_FONT
         ws[f'C{kpi_row}'].alignment = CENTER
-        ws[f'C{kpi_row+1}'] = self.technical_score
+        ws[f'C{kpi_row}'].border = THIN_BORDER
+        ws[f'C{kpi_row+1}'] = f"=Tecnico!G{self.tech_cat_total_row}"
         ws[f'C{kpi_row+1}'].font = Font(size=20, bold=True, color=COLORS['primary_light'])
         ws[f'C{kpi_row+1}'].alignment = CENTER
         ws[f'C{kpi_row+1}'].number_format = '0.00'
+        ws[f'C{kpi_row+1}'].fill = FORMULA_FILL
+        ws[f'C{kpi_row+1}'].border = THIN_BORDER
         
+        # ECONOMICO - formula referencing Economico sheet
         ws[f'D{kpi_row}'] = 'ECONOMICO'
         ws[f'D{kpi_row}'].font = KPI_LABEL_FONT
         ws[f'D{kpi_row}'].alignment = CENTER
-        ws[f'D{kpi_row+1}'] = self.economic_score
+        ws[f'D{kpi_row}'].border = THIN_BORDER
+        ws[f'D{kpi_row+1}'] = f"=Economico!C{self.econ_score_row}"
         ws[f'D{kpi_row+1}'].font = Font(size=20, bold=True, color=COLORS['secondary'])
         ws[f'D{kpi_row+1}'].alignment = CENTER
         ws[f'D{kpi_row+1}'].number_format = '0.00'
+        ws[f'D{kpi_row+1}'].fill = FORMULA_FILL
+        ws[f'D{kpi_row+1}'].border = THIN_BORDER
         
-        ws[f'E{kpi_row}'] = 'WIN %'
+        # SCONTO - formula referencing Economico sheet
+        ws[f'E{kpi_row}'] = 'SCONTO'
         ws[f'E{kpi_row}'].font = KPI_LABEL_FONT
         ws[f'E{kpi_row}'].alignment = CENTER
-        ws[f'E{kpi_row+1}'] = self.win_probability / 100
-        prob_color = COLORS['success'] if self.win_probability >= 60 else (COLORS['warning'] if self.win_probability >= 40 else COLORS['danger'])
-        ws[f'E{kpi_row+1}'].font = Font(size=20, bold=True, color=prob_color)
+        ws[f'E{kpi_row}'].border = THIN_BORDER
+        ws[f'E{kpi_row+1}'] = f"=Economico!C{self.econ_sconto_row}/100"
+        ws[f'E{kpi_row+1}'].font = Font(size=20, bold=True, color=COLORS['dark'])
         ws[f'E{kpi_row+1}'].alignment = CENTER
         ws[f'E{kpi_row+1}'].number_format = '0.0%'
-        
-        ws[f'F{kpi_row}'] = 'SCONTO'
-        ws[f'F{kpi_row}'].font = KPI_LABEL_FONT
-        ws[f'F{kpi_row}'].alignment = CENTER
-        ws[f'F{kpi_row+1}'] = self.my_discount / 100
-        ws[f'F{kpi_row+1}'].font = Font(size=20, bold=True, color=COLORS['dark'])
-        ws[f'F{kpi_row+1}'].alignment = CENTER
-        ws[f'F{kpi_row+1}'].number_format = '0.0%'
+        ws[f'E{kpi_row+1}'].fill = FORMULA_FILL
+        ws[f'E{kpi_row+1}'].border = THIN_BORDER
         
         row = kpi_row + 4
         
-        # Input section
+        # Input section (simplified - main inputs are in Economico)
         ws.merge_cells(f'B{row}:C{row}')
         ws[f'B{row}'] = 'PARAMETRI DI INPUT'
         ws[f'B{row}'].font = SECTION_FONT
         row += 1
         
+        # Reference to Economico sheet values
         ws[f'B{row}'] = 'Base d\'Asta'
         ws[f'B{row}'].font = LABEL_FONT
-        ws[f'C{row}'] = self.base_amount
-        ws[f'C{row}'].fill = INPUT_FILL
+        ws[f'C{row}'] = f"=Economico!C{self.econ_base_row}"
+        ws[f'C{row}'].fill = FORMULA_FILL
         ws[f'C{row}'].border = THIN_BORDER
         ws[f'C{row}'].number_format = '€ #,##0.00'
-        self.named_ranges['BaseAsta'] = f"'Dashboard'!$C${row}"
-        base_row = row
         row += 1
         
-        ws[f'B{row}'] = 'Sconto Mio (%)'
+        ws[f'B{row}'] = 'Sconto (%)'
         ws[f'B{row}'].font = LABEL_FONT
-        ws[f'C{row}'] = self.my_discount
-        ws[f'C{row}'].fill = INPUT_FILL
+        ws[f'C{row}'] = f"=Economico!C{self.econ_sconto_row}"
+        ws[f'C{row}'].fill = FORMULA_FILL
         ws[f'C{row}'].border = THIN_BORDER
         ws[f'C{row}'].number_format = '0.0'
-        self.named_ranges['ScontoMio'] = f"'Dashboard'!$C${row}"
-        sconto_mio_row = row
         row += 1
         
         ws[f'B{row}'] = 'Sconto Best Offer (%)'
         ws[f'B{row}'].font = LABEL_FONT
-        ws[f'C{row}'] = self.competitor_discount
-        ws[f'C{row}'].fill = INPUT_FILL
+        ws[f'C{row}'] = f"=Economico!C{self.econ_sconto_best_row}"
+        ws[f'C{row}'].fill = FORMULA_FILL
         ws[f'C{row}'].border = THIN_BORDER
         ws[f'C{row}'].number_format = '0.0'
-        self.named_ranges['ScontoBest'] = f"'Dashboard'!$C${row}"
-        sconto_best_row = row
         row += 1
         
         ws[f'B{row}'] = 'Alpha (α)'
         ws[f'B{row}'].font = LABEL_FONT
-        ws[f'C{row}'] = self.alpha
-        ws[f'C{row}'].fill = INPUT_FILL
+        ws[f'C{row}'] = f"=Economico!C{self.econ_alpha_row}"
+        ws[f'C{row}'].fill = FORMULA_FILL
         ws[f'C{row}'].border = THIN_BORDER
         ws[f'C{row}'].number_format = '0.00'
-        self.named_ranges['Alpha'] = f"'Dashboard'!$C${row}"
-        alpha_row = row
         row += 2
-        
-        # Calculated values
-        ws.merge_cells(f'B{row}:C{row}')
-        ws[f'B{row}'] = 'VALORI CALCOLATI'
-        ws[f'B{row}'].font = SECTION_FONT
-        row += 1
-        
-        ws[f'B{row}'] = 'Prezzo Mio'
-        ws[f'B{row}'].font = LABEL_FONT
-        ws[f'C{row}'] = f'=C{base_row}*(1-C{sconto_mio_row}/100)'
-        ws[f'C{row}'].fill = FORMULA_FILL
-        ws[f'C{row}'].border = THIN_BORDER
-        ws[f'C{row}'].number_format = '€ #,##0.00'
-        prezzo_mio_row = row
-        row += 1
-        
-        ws[f'B{row}'] = 'Prezzo Best Offer'
-        ws[f'B{row}'].font = LABEL_FONT
-        ws[f'C{row}'] = f'=C{base_row}*(1-C{sconto_best_row}/100)'
-        ws[f'C{row}'].fill = FORMULA_FILL
-        ws[f'C{row}'].border = THIN_BORDER
-        ws[f'C{row}'].number_format = '€ #,##0.00'
-        prezzo_best_row = row
-        row += 1
-        
-        ws[f'B{row}'] = 'Rapporto (R)'
-        ws[f'B{row}'].font = LABEL_FONT
-        ws[f'C{row}'] = f'=IF(C{base_row}-C{prezzo_best_row}=0,0,(C{base_row}-C{prezzo_mio_row})/(C{base_row}-C{prezzo_best_row}))'
-        ws[f'C{row}'].fill = FORMULA_FILL
-        ws[f'C{row}'].border = THIN_BORDER
-        ws[f'C{row}'].number_format = '0.0000'
-        rapporto_row = row
-        row += 1
-        
-        ws[f'B{row}'] = 'Max Punteggio Economico'
-        ws[f'B{row}'].font = LABEL_FONT
-        ws[f'C{row}'] = self.max_econ_score
-        ws[f'C{row}'].fill = LIGHT_FILL
-        ws[f'C{row}'].border = THIN_BORDER
-        ws[f'C{row}'].number_format = '0.00'
-        max_econ_row = row
-        self.named_ranges['MaxEcon'] = f"'Dashboard'!$C${row}"
-        row += 1
-        
-        ws[f'B{row}'] = 'Punteggio Economico'
-        ws[f'B{row}'].font = LABEL_FONT
-        ws[f'C{row}'] = f'=C{max_econ_row}*(C{rapporto_row}^C{alpha_row})'
-        ws[f'C{row}'].fill = FORMULA_FILL
-        ws[f'C{row}'].border = THIN_BORDER
-        ws[f'C{row}'].number_format = '0.00'
-        ws[f'C{row}'].font = Font(bold=True, color=COLORS['secondary'])
-        row += 2
-        
-        # Category summary
-        ws.merge_cells(f'E{kpi_row+3}:F{kpi_row+3}')
-        ws[f'E{kpi_row+3}'] = 'CATEGORIE TECNICHE'
-        ws[f'E{kpi_row+3}'].font = SECTION_FONT
-        
-        cat_row = kpi_row + 4
-        categories = [
-            ('Cert. Aziendali', self.category_scores.get('company_certs', 0)),
-            ('Cert. Professionali', self.category_scores.get('resource', 0)),
-            ('Referenze', self.category_scores.get('reference', 0)),
-            ('Progetti', self.category_scores.get('project', 0)),
-        ]
-        
-        for cat_name, cat_score in categories:
-            ws[f'E{cat_row}'] = cat_name
-            ws[f'E{cat_row}'].font = Font(size=9, color=COLORS['muted'])
-            ws[f'F{cat_row}'] = cat_score
-            ws[f'F{cat_row}'].number_format = '0.00'
-            ws[f'F{cat_row}'].alignment = RIGHT
-            cat_row += 1
-        
-        ws[f'E{cat_row}'] = 'TOTALE TECNICO'
-        ws[f'E{cat_row}'].font = LABEL_FONT
-        ws[f'F{cat_row}'] = f'=SUM(F{kpi_row+4}:F{cat_row-1})'
-        ws[f'F{cat_row}'].number_format = '0.00'
-        ws[f'F{cat_row}'].font = Font(bold=True)
-        ws[f'F{cat_row}'].alignment = RIGHT
-        
-        rule = DataBarRule(
-            start_type='num', start_value=0,
-            end_type='num', end_value=self.max_tech_score / 4,
-            color=COLORS['primary_light']
-        )
-        ws.conditional_formatting.add(f'F{kpi_row+4}:F{cat_row-1}', rule)
         
         ws.freeze_panes = 'B5'
 
@@ -462,10 +365,19 @@ class ExcelReportGenerator:
         }
         
         company_certs = self.lot_config.get('company_certs', [])
+        # For company_certs, raw is the SUM of individual cert points obtained
+        # max_raw is the SUM of individual max points, gara_weight is total weight
+        company_certs_raw_sum = 0
         for cert in company_certs:
+            cert_id = cert.get('id', '')
+            # Check if company has this cert (stored in tech_inputs_full)
+            cert_input = self.tech_inputs_full.get(f'company_cert_{cert_id}', {})
+            has_cert = cert_input.get('has_cert', False) if isinstance(cert_input, dict) else cert_input
+            if has_cert:
+                company_certs_raw_sum += cert.get('points', 0)
             category_data['company_certs']['max_raw'] += cert.get('points', 0)
             category_data['company_certs']['gara_weight'] += cert.get('gara_weight', 0)
-        category_data['company_certs']['raw'] = self.category_scores.get('company_certs', 0)  # Already weighted for company certs
+        category_data['company_certs']['raw'] = company_certs_raw_sum
         
         for req in reqs:
             req_type = req.get('type', 'resource')
@@ -487,53 +399,61 @@ class ExcelReportGenerator:
             cat_rows[cat_key] = row
             
             ws.cell(row=row, column=2, value=cat_label).font = LABEL_FONT
+            ws.cell(row=row, column=2).border = THIN_BORDER
             # Raw score
             raw_cell = ws.cell(row=row, column=3, value=data['raw'])
             raw_cell.number_format = '0.00'
             raw_cell.fill = INPUT_FILL
+            raw_cell.border = THIN_BORDER
             # Max raw
             max_raw_cell = ws.cell(row=row, column=4, value=data['max_raw'])
             max_raw_cell.number_format = '0.00'
+            max_raw_cell.border = THIN_BORDER
             # Percentage - formula
             pct_cell = ws.cell(row=row, column=5, value=f'=IF(D{row}=0,0,C{row}/D{row})')
             pct_cell.number_format = '0.0%'
             pct_cell.fill = FORMULA_FILL
+            pct_cell.border = THIN_BORDER
             # Gara weight
             weight_cell = ws.cell(row=row, column=6, value=data['gara_weight'])
             weight_cell.number_format = '0.00'
-            # Weighted score - FORMULA: raw * gara_weight / max_raw
-            if cat_key == 'company_certs':
-                # Company certs already have weighted value
-                weighted_cell = ws.cell(row=row, column=7, value=data['raw'])
-            else:
-                weighted_cell = ws.cell(row=row, column=7, value=f'=IF(D{row}=0,0,C{row}*F{row}/D{row})')
+            weight_cell.border = THIN_BORDER
+            # Weighted score - FORMULA for ALL categories: raw * gara_weight / max_raw
+            weighted_cell = ws.cell(row=row, column=7, value=f'=IF(D{row}=0,0,C{row}*F{row}/D{row})')
             weighted_cell.number_format = '0.00'
             weighted_cell.fill = FORMULA_FILL
             weighted_cell.font = Font(bold=True, color=COLORS['primary'])
-            
-            for col in range(2, 8):
-                ws.cell(row=row, column=col).border = THIN_BORDER
+            weighted_cell.border = THIN_BORDER
             row += 1
         
         # Total row with formulas
         ws.cell(row=row, column=2, value='TOTALE').font = Font(bold=True)
+        ws.cell(row=row, column=2).border = MEDIUM_BORDER
+        ws.cell(row=row, column=2).fill = LIGHT_FILL
         ws.cell(row=row, column=3, value=f'=SUM(C{cat_start_row}:C{row-1})').number_format = '0.00'
+        ws.cell(row=row, column=3).border = MEDIUM_BORDER
+        ws.cell(row=row, column=3).fill = LIGHT_FILL
         ws.cell(row=row, column=4, value=f'=SUM(D{cat_start_row}:D{row-1})').number_format = '0.00'
+        ws.cell(row=row, column=4).border = MEDIUM_BORDER
+        ws.cell(row=row, column=4).fill = LIGHT_FILL
         ws.cell(row=row, column=5, value=f'=IF(D{row}=0,0,C{row}/D{row})').number_format = '0.0%'
         ws.cell(row=row, column=5).fill = FORMULA_FILL
+        ws.cell(row=row, column=5).border = MEDIUM_BORDER
         ws.cell(row=row, column=6, value=f'=SUM(F{cat_start_row}:F{row-1})').number_format = '0.00'
+        ws.cell(row=row, column=6).border = MEDIUM_BORDER
+        ws.cell(row=row, column=6).fill = LIGHT_FILL
         ws.cell(row=row, column=7, value=f'=SUM(G{cat_start_row}:G{row-1})').number_format = '0.00'
         ws.cell(row=row, column=7).font = Font(bold=True, color=COLORS['primary'])
         ws.cell(row=row, column=7).fill = FORMULA_FILL
+        ws.cell(row=row, column=7).border = MEDIUM_BORDER
         
         # Update tech total to reference this sum
         ws[f'{tech_total_col}{tech_total_row}'] = f'=G{row}'
         ws[f'{tech_total_col}{tech_total_row}'].fill = FORMULA_FILL
         
-        for col in range(2, 8):
-            ws.cell(row=row, column=col).border = MEDIUM_BORDER
-            ws.cell(row=row, column=col).fill = LIGHT_FILL
         cat_total_row = row
+        # Store for Dashboard reference
+        self.tech_cat_total_row = cat_total_row
         row += 3
         
         # Detailed requirements with expanded certifications
@@ -734,43 +654,62 @@ class ExcelReportGenerator:
         row += 1
         
         ws[f'B{row}'] = 'Base d\'Asta'
+        ws[f'B{row}'].font = LABEL_FONT
+        ws[f'B{row}'].border = THIN_BORDER
         ws[f'C{row}'] = self.base_amount
         ws[f'C{row}'].fill = INPUT_FILL
         ws[f'C{row}'].border = THIN_BORDER
         ws[f'C{row}'].number_format = '€ #,##0.00'
         base_row = row
+        self.econ_base_row = row
+        self.named_ranges['BaseAsta'] = f"'Economico'!$C${row}"
         row += 1
         
-        ws[f'B{row}'] = 'Sconto Mio (%)'
+        ws[f'B{row}'] = 'Sconto (%)'
+        ws[f'B{row}'].font = LABEL_FONT
+        ws[f'B{row}'].border = THIN_BORDER
         ws[f'C{row}'] = self.my_discount
         ws[f'C{row}'].fill = INPUT_FILL
         ws[f'C{row}'].border = THIN_BORDER
         ws[f'C{row}'].number_format = '0.0'
         sconto_mio_row = row
+        self.econ_sconto_row = row
+        self.named_ranges['Sconto'] = f"'Economico'!$C${row}"
         row += 1
         
         ws[f'B{row}'] = 'Sconto Best Offer (%)'
+        ws[f'B{row}'].font = LABEL_FONT
+        ws[f'B{row}'].border = THIN_BORDER
         ws[f'C{row}'] = self.competitor_discount
         ws[f'C{row}'].fill = INPUT_FILL
         ws[f'C{row}'].border = THIN_BORDER
         ws[f'C{row}'].number_format = '0.0'
         sconto_best_row = row
+        self.econ_sconto_best_row = row
+        self.named_ranges['ScontoBest'] = f"'Economico'!$C${row}"
         row += 1
         
         ws[f'B{row}'] = 'Alpha (α)'
+        ws[f'B{row}'].font = LABEL_FONT
+        ws[f'B{row}'].border = THIN_BORDER
         ws[f'C{row}'] = self.alpha
         ws[f'C{row}'].fill = INPUT_FILL
         ws[f'C{row}'].border = THIN_BORDER
         ws[f'C{row}'].number_format = '0.00'
         alpha_row = row
+        self.econ_alpha_row = row
+        self.named_ranges['Alpha'] = f"'Economico'!$C${row}"
         row += 1
         
         ws[f'B{row}'] = 'Max Punteggio Economico'
+        ws[f'B{row}'].font = LABEL_FONT
+        ws[f'B{row}'].border = THIN_BORDER
         ws[f'C{row}'] = self.max_econ_score
         ws[f'C{row}'].fill = LIGHT_FILL
         ws[f'C{row}'].border = THIN_BORDER
         ws[f'C{row}'].number_format = '0.00'
         max_econ_row = row
+        self.named_ranges['MaxEcon'] = f"'Economico'!$C${row}"
         row += 2
         
         ws.merge_cells(f'B{row}:C{row}')
@@ -778,15 +717,20 @@ class ExcelReportGenerator:
         ws[f'B{row}'].font = SECTION_FONT
         row += 1
         
-        ws[f'B{row}'] = 'Prezzo Mio'
+        ws[f'B{row}'] = 'Prezzo Offerto'
+        ws[f'B{row}'].font = LABEL_FONT
+        ws[f'B{row}'].border = THIN_BORDER
         ws[f'C{row}'] = f'=C{base_row}*(1-C{sconto_mio_row}/100)'
         ws[f'C{row}'].fill = FORMULA_FILL
         ws[f'C{row}'].border = THIN_BORDER
         ws[f'C{row}'].number_format = '€ #,##0.00'
         prezzo_mio_row = row
+        self.econ_prezzo_mio_row = row
         row += 1
         
         ws[f'B{row}'] = 'Prezzo Best Offer'
+        ws[f'B{row}'].font = LABEL_FONT
+        ws[f'B{row}'].border = THIN_BORDER
         ws[f'C{row}'] = f'=C{base_row}*(1-C{sconto_best_row}/100)'
         ws[f'C{row}'].fill = FORMULA_FILL
         ws[f'C{row}'].border = THIN_BORDER
@@ -795,6 +739,8 @@ class ExcelReportGenerator:
         row += 1
         
         ws[f'B{row}'] = 'Rapporto (R)'
+        ws[f'B{row}'].font = LABEL_FONT
+        ws[f'B{row}'].border = THIN_BORDER
         ws[f'C{row}'] = f'=IF(C{base_row}-C{prezzo_best_row}=0,0,(C{base_row}-C{prezzo_mio_row})/(C{base_row}-C{prezzo_best_row}))'
         ws[f'C{row}'].fill = FORMULA_FILL
         ws[f'C{row}'].border = THIN_BORDER
@@ -804,16 +750,18 @@ class ExcelReportGenerator:
         
         ws[f'B{row}'] = 'PUNTEGGIO ECONOMICO'
         ws[f'B{row}'].font = Font(bold=True)
+        ws[f'B{row}'].border = MEDIUM_BORDER
         ws[f'C{row}'] = f'=C{max_econ_row}*(C{rapporto_row}^C{alpha_row})'
         ws[f'C{row}'].fill = PatternFill(start_color='E8F5E9', end_color='E8F5E9', fill_type='solid')
         ws[f'C{row}'].border = MEDIUM_BORDER
         ws[f'C{row}'].number_format = '0.00'
         ws[f'C{row}'].font = Font(bold=True, size=14, color=COLORS['success'])
+        self.econ_score_row = row
         row += 3
         
-        # Scenario table
+        # Scenario table - discounts from 1% to 100%
         ws.merge_cells(f'B{row}:G{row}')
-        ws[f'B{row}'] = 'TABELLA SCENARI'
+        ws[f'B{row}'] = 'TABELLA SCENARI (1%-100%)'
         ws[f'B{row}'].font = SECTION_FONT
         row += 1
         
@@ -827,23 +775,27 @@ class ExcelReportGenerator:
         row += 1
         
         scenario_start = row
-        discounts = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
-        
-        for discount in discounts:
+        # Discounts from 1 to 100 with step 1
+        for discount in range(1, 101):
             ws.cell(row=row, column=2, value=discount / 100).number_format = '0%'
-            ws.cell(row=row, column=3, value=f'=C{base_row}*(1-B{row})').number_format = '€ #,##0.00'
+            ws.cell(row=row, column=2).border = THIN_BORDER
+            ws.cell(row=row, column=3, value=f'=$C${base_row}*(1-B{row})').number_format = '€ #,##0.00'
+            ws.cell(row=row, column=3).border = THIN_BORDER
             ws.cell(row=row, column=4, value=f'=IF($C${base_row}-$C${prezzo_best_row}=0,0,($C${base_row}-C{row})/($C${base_row}-$C${prezzo_best_row}))').number_format = '0.0000'
+            ws.cell(row=row, column=4).border = THIN_BORDER
             ws.cell(row=row, column=5, value=f'=$C${max_econ_row}*(D{row}^$C${alpha_row})').number_format = '0.00'
-            ws.cell(row=row, column=6, value=self.technical_score).number_format = '0.00'
+            ws.cell(row=row, column=5).border = THIN_BORDER
+            # Reference to Tecnico sheet total
+            ws.cell(row=row, column=6, value=f'=Tecnico!G{self.tech_cat_total_row}').number_format = '0.00'
+            ws.cell(row=row, column=6).border = THIN_BORDER
             ws.cell(row=row, column=7, value=f'=E{row}+F{row}').number_format = '0.00'
             ws.cell(row=row, column=7).font = Font(bold=True)
+            ws.cell(row=row, column=7).border = THIN_BORDER
             
+            # Highlight current discount row
             if discount == int(self.my_discount):
                 for col in range(2, 8):
                     ws.cell(row=row, column=col).fill = PatternFill(start_color='FFF9C4', end_color='FFF9C4', fill_type='solid')
-            
-            for col in range(2, 8):
-                ws.cell(row=row, column=col).border = THIN_BORDER
             row += 1
         
         rule = ColorScaleRule(
@@ -852,9 +804,13 @@ class ExcelReportGenerator:
             end_type='max', end_color='D4EDDA'
         )
         ws.conditional_formatting.add(f'G{scenario_start}:G{row-1}', rule)
+        
+        ws.freeze_panes = 'B5'
 
     def _create_rti_sheet(self):
         """Create the RTI contributions breakdown sheet"""
+        from openpyxl.worksheet.datavalidation import DataValidation
+        
         ws = self.wb.create_sheet('RTI')
         ws.sheet_properties.tabColor = COLORS['partner_1']
         
@@ -890,26 +846,47 @@ class ExcelReportGenerator:
         row += 1
         
         quote_start = row
-        prezzo_mio = self.base_amount * (1 - self.my_discount / 100)
+        
+        # Create data validation for company names
+        company_list = ','.join(self.rti_companies)
+        company_dv = DataValidation(type='list', formula1=f'"{company_list}"', allow_blank=False)
+        company_dv.error = 'Selezionare un\'azienda dalla lista'
+        company_dv.errorTitle = 'Azienda non valida'
+        ws.add_data_validation(company_dv)
         
         for company in self.rti_companies:
             quota = self.rti_quotas.get(company, 0)
-            amount = prezzo_mio * (quota / 100)
             
-            ws.cell(row=row, column=2, value=company).font = Font(bold=True, color=self.company_colors.get(company, COLORS['dark']))
-            ws.cell(row=row, column=3, value=quota / 100).number_format = '0.0%'
-            ws.cell(row=row, column=4, value=amount).number_format = '€ #,##0.00'
+            company_cell = ws.cell(row=row, column=2, value=company)
+            company_cell.font = Font(bold=True, color=self.company_colors.get(company, COLORS['dark']))
+            company_cell.border = THIN_BORDER
+            company_dv.add(company_cell)
             
-            for col in range(2, 5):
-                ws.cell(row=row, column=col).border = THIN_BORDER
+            # Quota as editable input
+            quota_cell = ws.cell(row=row, column=3, value=quota / 100)
+            quota_cell.number_format = '0.0%'
+            quota_cell.fill = INPUT_FILL
+            quota_cell.border = THIN_BORDER
+            
+            # Importo as FORMULA referencing Economico sheet
+            importo_cell = ws.cell(row=row, column=4)
+            importo_cell.value = f'=Economico!C{self.econ_prezzo_mio_row}*C{row}'
+            importo_cell.number_format = '€ #,##0.00'
+            importo_cell.fill = FORMULA_FILL
+            importo_cell.border = THIN_BORDER
+            
             row += 1
         
+        # Total row with formulas
         ws.cell(row=row, column=2, value='TOTALE').font = Font(bold=True)
+        ws.cell(row=row, column=2).border = MEDIUM_BORDER
+        ws.cell(row=row, column=2).fill = LIGHT_FILL
         ws.cell(row=row, column=3, value=f'=SUM(C{quote_start}:C{row-1})').number_format = '0.0%'
+        ws.cell(row=row, column=3).border = MEDIUM_BORDER
+        ws.cell(row=row, column=3).fill = LIGHT_FILL
         ws.cell(row=row, column=4, value=f'=SUM(D{quote_start}:D{row-1})').number_format = '€ #,##0.00'
-        for col in range(2, 5):
-            ws.cell(row=row, column=col).fill = LIGHT_FILL
-            ws.cell(row=row, column=col).border = MEDIUM_BORDER
+        ws.cell(row=row, column=4).border = MEDIUM_BORDER
+        ws.cell(row=row, column=4).fill = LIGHT_FILL
         row += 3
         
         # References
@@ -936,14 +913,25 @@ class ExcelReportGenerator:
                 assigned = tech_input.get('assigned_company', '') or 'Lutech'
                 gara_weight = req.get('gara_weight', 0)
                 
-                ws.cell(row=row, column=2, value=req_id).font = Font(size=9, color=COLORS['muted'])
-                ws.cell(row=row, column=3, value=req.get('label', '')[:40]).alignment = WRAP
-                ws.cell(row=row, column=4, value=assigned).font = Font(bold=True, color=self.company_colors.get(assigned, COLORS['dark']))
-                ws.cell(row=row, column=5, value=gara_weight).number_format = '0.00'
-                ws.cell(row=row, column=5).font = Font(bold=True)
+                id_cell = ws.cell(row=row, column=2, value=req_id)
+                id_cell.font = Font(size=9, color=COLORS['muted'])
+                id_cell.border = THIN_BORDER
                 
-                for c in range(2, 6):
-                    ws.cell(row=row, column=c).border = THIN_BORDER
+                label_cell = ws.cell(row=row, column=3, value=req.get('label', '')[:40])
+                label_cell.alignment = WRAP
+                label_cell.border = THIN_BORDER
+                
+                assigned_cell = ws.cell(row=row, column=4, value=assigned)
+                assigned_cell.font = Font(bold=True, color=self.company_colors.get(assigned, COLORS['dark']))
+                assigned_cell.fill = INPUT_FILL
+                assigned_cell.border = THIN_BORDER
+                company_dv.add(assigned_cell)
+                
+                weight_cell = ws.cell(row=row, column=5, value=gara_weight)
+                weight_cell.number_format = '0.00'
+                weight_cell.font = Font(bold=True)
+                weight_cell.border = THIN_BORDER
+                
                 row += 1
             row += 1
         
@@ -971,14 +959,25 @@ class ExcelReportGenerator:
                 assigned = tech_input.get('assigned_company', '') or 'Lutech'
                 gara_weight = req.get('gara_weight', 0)
                 
-                ws.cell(row=row, column=2, value=req_id).font = Font(size=9, color=COLORS['muted'])
-                ws.cell(row=row, column=3, value=req.get('label', '')[:40]).alignment = WRAP
-                ws.cell(row=row, column=4, value=assigned).font = Font(bold=True, color=self.company_colors.get(assigned, COLORS['dark']))
-                ws.cell(row=row, column=5, value=gara_weight).number_format = '0.00'
-                ws.cell(row=row, column=5).font = Font(bold=True)
+                id_cell = ws.cell(row=row, column=2, value=req_id)
+                id_cell.font = Font(size=9, color=COLORS['muted'])
+                id_cell.border = THIN_BORDER
                 
-                for c in range(2, 6):
-                    ws.cell(row=row, column=c).border = THIN_BORDER
+                label_cell = ws.cell(row=row, column=3, value=req.get('label', '')[:40])
+                label_cell.alignment = WRAP
+                label_cell.border = THIN_BORDER
+                
+                assigned_cell = ws.cell(row=row, column=4, value=assigned)
+                assigned_cell.font = Font(bold=True, color=self.company_colors.get(assigned, COLORS['dark']))
+                assigned_cell.fill = INPUT_FILL
+                assigned_cell.border = THIN_BORDER
+                company_dv.add(assigned_cell)
+                
+                weight_cell = ws.cell(row=row, column=5, value=gara_weight)
+                weight_cell.number_format = '0.00'
+                weight_cell.font = Font(bold=True)
+                weight_cell.border = THIN_BORDER
+                
                 row += 1
             row += 1
         
