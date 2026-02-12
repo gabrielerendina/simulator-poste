@@ -404,18 +404,48 @@ class CertVerificationService:
     
     def _ocr_with_rotation(self, image: "PILImage.Image") -> str:
         """
-        Try OCR on image, rotating up to 3 times; test multiple Tesseract configs per rotation
+        Try OCR on image with limited rotation attempts for performance.
+        Only try preprocessing if original fails.
         """
-        rotations = [0, 90, 180, 270]
-        configs = ["", "--oem 3 --psm 6", "--oem 3 --psm 4"]
+        configs = ["--oem 3 --psm 6"]  # Single best config for speed
         best_text = ""
         best_score = 0
         best_rotation = 0
         
-        # Try with original image first
-        for image_variant in [image, self._preprocess_image(image)]:
-            for rotation in rotations:
-                rotated = image_variant.rotate(-rotation, expand=True) if rotation > 0 else image_variant
+        # First try original image (most common case)
+        for cfg in configs:
+            try:
+                text = pytesseract.image_to_string(image, lang='eng+ita', config=cfg)
+            except Exception:
+                continue
+            score = self._score_ocr_text(text)
+            if score > best_score:
+                best_score = score
+                best_text = text
+                if score >= 10:
+                    logger.debug(f"Good OCR result at rotation 0° (score={best_score})")
+                    return best_text
+        
+        # If original failed, try preprocessed image
+        if best_score < 10:
+            preprocessed = self._preprocess_image(image)
+            for cfg in configs:
+                try:
+                    text = pytesseract.image_to_string(preprocessed, lang='eng+ita', config=cfg)
+                except Exception:
+                    continue
+                score = self._score_ocr_text(text)
+                if score > best_score:
+                    best_score = score
+                    best_text = text
+                    if score >= 10:
+                        logger.debug(f"Good OCR result with preprocessing (score={best_score})")
+                        return best_text
+        
+        # Only try rotation if still failing (rare case)
+        if best_score < 5:
+            for rotation in [180]:  # Only try 180° flip
+                rotated = image.rotate(-rotation, expand=True)
                 for cfg in configs:
                     try:
                         text = pytesseract.image_to_string(rotated, lang='eng+ita', config=cfg)
@@ -426,16 +456,14 @@ class CertVerificationService:
                         best_score = score
                         best_text = text
                         best_rotation = rotation
-                        if score >= 15:  # Higher threshold to try both variants
+                        if score >= 10:
                             break
-                if best_score >= 15:
+                if best_score >= 10:
                     break
-            if best_score >= 15:
-                break
         
-        # Log only once with the final result (reduced verbosity)
+        # Log result
         if best_score == 0:
-            logger.debug("Could not extract meaningful text from image at any rotation/config")
+            logger.debug("Could not extract meaningful text from image")
         elif best_score >= 10:
             logger.debug(f"Good OCR result at rotation {best_rotation}° (score={best_score})")
         
