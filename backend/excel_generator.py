@@ -380,79 +380,92 @@ class ExcelReportGenerator:
         ws.freeze_panes = 'B5'
 
     def _create_technical_sheet(self):
-        """Create the technical score analysis sheet"""
+        """Create the technical score analysis sheet with formulas"""
         ws = self.wb.create_sheet('Tecnico')
         ws.sheet_properties.tabColor = COLORS['primary_light']
         
         ws.column_dimensions['A'].width = 3
         ws.column_dimensions['B'].width = 8
-        ws.column_dimensions['C'].width = 40
-        ws.column_dimensions['D'].width = 12
-        ws.column_dimensions['E'].width = 12
+        ws.column_dimensions['C'].width = 35
+        ws.column_dimensions['D'].width = 25
+        ws.column_dimensions['E'].width = 15
         ws.column_dimensions['F'].width = 12
-        ws.column_dimensions['G'].width = 12
-        ws.column_dimensions['H'].width = 15
-        ws.column_dimensions['I'].width = 12
+        ws.column_dimensions['G'].width = 10
+        ws.column_dimensions['H'].width = 10
+        ws.column_dimensions['I'].width = 10
+        ws.column_dimensions['J'].width = 12
+        ws.column_dimensions['K'].width = 14
+        ws.column_dimensions['L'].width = 8
         
         row = 2
         
-        ws.merge_cells(f'B{row}:I{row}')
+        ws.merge_cells(f'B{row}:L{row}')
         ws[f'B{row}'] = 'ANALISI PUNTEGGIO TECNICO'
         ws[f'B{row}'].font = TITLE_FONT
         row += 2
         
         ws[f'B{row}'] = 'Punteggio Tecnico Totale:'
         ws[f'B{row}'].font = LABEL_FONT
-        ws[f'C{row}'] = self.technical_score
-        ws[f'C{row}'].font = Font(size=16, bold=True, color=COLORS['primary'])
-        ws[f'C{row}'].number_format = '0.00'
+        tech_total_row = row
+        tech_total_col = 'C'
+        ws[f'{tech_total_col}{row}'] = self.technical_score  # Will be updated to formula later
+        ws[f'{tech_total_col}{row}'].font = Font(size=16, bold=True, color=COLORS['primary'])
+        ws[f'{tech_total_col}{row}'].number_format = '0.00'
         
         ws[f'E{row}'] = 'Max Ottenibile:'
         ws[f'E{row}'].font = LABEL_FONT
         ws[f'F{row}'] = self.max_tech_score
         ws[f'F{row}'].number_format = '0.00'
+        self.named_ranges['MaxTech'] = f"'Tecnico'!$F${row}"
+        max_tech_row = row
         
-        ws[f'G{row}'] = 'Raggiungimento:'
-        ws[f'G{row}'].font = LABEL_FONT
+        ws[f'H{row}'] = 'Raggiungimento:'
+        ws[f'H{row}'].font = LABEL_FONT
         pct = self.technical_score / self.max_tech_score if self.max_tech_score > 0 else 0
-        ws[f'H{row}'] = pct
-        ws[f'H{row}'].number_format = '0.0%'
+        ws[f'I{row}'] = f'=C{row}/F{row}'
+        ws[f'I{row}'].number_format = '0.0%'
+        ws[f'I{row}'].fill = FORMULA_FILL
         if pct >= 0.7:
-            ws[f'H{row}'].font = Font(bold=True, color=COLORS['success'])
+            ws[f'I{row}'].font = Font(bold=True, color=COLORS['success'])
         elif pct >= 0.5:
-            ws[f'H{row}'].font = Font(bold=True, color=COLORS['warning'])
+            ws[f'I{row}'].font = Font(bold=True, color=COLORS['warning'])
         else:
-            ws[f'H{row}'].font = Font(bold=True, color=COLORS['danger'])
+            ws[f'I{row}'].font = Font(bold=True, color=COLORS['danger'])
         row += 3
         
-        # Category breakdown
+        # Category breakdown with formulas
         ws.merge_cells(f'B{row}:E{row}')
         ws[f'B{row}'] = 'BREAKDOWN PER CATEGORIA'
         ws[f'B{row}'].font = SECTION_FONT
         row += 1
         
-        headers = ['Categoria', 'Punteggio Raw', 'Max Raw', '%', 'Peso Gara', 'Punteggio Pesato']
-        for col, header in enumerate(headers, start=2):
+        cat_headers = ['Categoria', 'Punteggio Raw', 'Max Raw', '%', 'Peso Gara', 'Punteggio Pesato (Formula)']
+        for col, header in enumerate(cat_headers, start=2):
             cell = ws.cell(row=row, column=col, value=header)
             cell.font = HEADER_FONT
             cell.fill = HEADER_FILL
             cell.alignment = CENTER
             cell.border = THIN_BORDER
+        cat_header_row = row
         row += 1
         
+        # Track category data rows for formulas
+        cat_rows = {}
         reqs = self.lot_config.get('reqs', [])
+        
+        # Calculate category aggregates
         category_data = {
-            'company_certs': {'raw': 0, 'max_raw': 0, 'gara_weight': 0, 'weighted': 0},
-            'resource': {'raw': 0, 'max_raw': 0, 'gara_weight': 0, 'weighted': 0},
-            'reference': {'raw': 0, 'max_raw': 0, 'gara_weight': 0, 'weighted': 0},
-            'project': {'raw': 0, 'max_raw': 0, 'gara_weight': 0, 'weighted': 0},
+            'company_certs': {'raw': 0, 'max_raw': 0, 'gara_weight': 0},
+            'resource': {'raw': 0, 'max_raw': 0, 'gara_weight': 0},
+            'reference': {'raw': 0, 'max_raw': 0, 'gara_weight': 0},
+            'project': {'raw': 0, 'max_raw': 0, 'gara_weight': 0},
         }
         
         company_certs = self.lot_config.get('company_certs', [])
         for cert in company_certs:
             category_data['company_certs']['max_raw'] += cert.get('points', 0)
             category_data['company_certs']['gara_weight'] += cert.get('gara_weight', 0)
-        category_data['company_certs']['weighted'] = self.category_scores.get('company_certs', 0)
+        category_data['company_certs']['raw'] = self.category_scores.get('company_certs', 0)  # Already weighted for company certs
         
         for req in reqs:
             req_type = req.get('type', 'resource')
@@ -460,7 +473,6 @@ class ExcelReportGenerator:
                 category_data[req_type]['raw'] += self.details.get(req.get('id', ''), 0)
                 category_data[req_type]['max_raw'] += req.get('max_points', 0)
                 category_data[req_type]['gara_weight'] += req.get('gara_weight', 0)
-                category_data[req_type]['weighted'] += self.weighted_scores.get(req.get('id', ''), 0)
         
         cat_labels = {
             'company_certs': 'Certificazioni Aziendali',
@@ -472,39 +484,65 @@ class ExcelReportGenerator:
         cat_start_row = row
         for cat_key, cat_label in cat_labels.items():
             data = category_data[cat_key]
+            cat_rows[cat_key] = row
+            
             ws.cell(row=row, column=2, value=cat_label).font = LABEL_FONT
-            ws.cell(row=row, column=3, value=data['raw']).number_format = '0.00'
-            ws.cell(row=row, column=4, value=data['max_raw']).number_format = '0.00'
-            cat_pct = data['raw'] / data['max_raw'] if data['max_raw'] > 0 else 0
-            ws.cell(row=row, column=5, value=cat_pct).number_format = '0.0%'
-            ws.cell(row=row, column=6, value=data['gara_weight']).number_format = '0.00'
-            ws.cell(row=row, column=7, value=data['weighted']).number_format = '0.00'
+            # Raw score
+            raw_cell = ws.cell(row=row, column=3, value=data['raw'])
+            raw_cell.number_format = '0.00'
+            raw_cell.fill = INPUT_FILL
+            # Max raw
+            max_raw_cell = ws.cell(row=row, column=4, value=data['max_raw'])
+            max_raw_cell.number_format = '0.00'
+            # Percentage - formula
+            pct_cell = ws.cell(row=row, column=5, value=f'=IF(D{row}=0,0,C{row}/D{row})')
+            pct_cell.number_format = '0.0%'
+            pct_cell.fill = FORMULA_FILL
+            # Gara weight
+            weight_cell = ws.cell(row=row, column=6, value=data['gara_weight'])
+            weight_cell.number_format = '0.00'
+            # Weighted score - FORMULA: raw * gara_weight / max_raw
+            if cat_key == 'company_certs':
+                # Company certs already have weighted value
+                weighted_cell = ws.cell(row=row, column=7, value=data['raw'])
+            else:
+                weighted_cell = ws.cell(row=row, column=7, value=f'=IF(D{row}=0,0,C{row}*F{row}/D{row})')
+            weighted_cell.number_format = '0.00'
+            weighted_cell.fill = FORMULA_FILL
+            weighted_cell.font = Font(bold=True, color=COLORS['primary'])
             
             for col in range(2, 8):
                 ws.cell(row=row, column=col).border = THIN_BORDER
             row += 1
         
-        # Total row
+        # Total row with formulas
         ws.cell(row=row, column=2, value='TOTALE').font = Font(bold=True)
         ws.cell(row=row, column=3, value=f'=SUM(C{cat_start_row}:C{row-1})').number_format = '0.00'
         ws.cell(row=row, column=4, value=f'=SUM(D{cat_start_row}:D{row-1})').number_format = '0.00'
         ws.cell(row=row, column=5, value=f'=IF(D{row}=0,0,C{row}/D{row})').number_format = '0.0%'
+        ws.cell(row=row, column=5).fill = FORMULA_FILL
         ws.cell(row=row, column=6, value=f'=SUM(F{cat_start_row}:F{row-1})').number_format = '0.00'
         ws.cell(row=row, column=7, value=f'=SUM(G{cat_start_row}:G{row-1})').number_format = '0.00'
         ws.cell(row=row, column=7).font = Font(bold=True, color=COLORS['primary'])
+        ws.cell(row=row, column=7).fill = FORMULA_FILL
+        
+        # Update tech total to reference this sum
+        ws[f'{tech_total_col}{tech_total_row}'] = f'=G{row}'
+        ws[f'{tech_total_col}{tech_total_row}'].fill = FORMULA_FILL
         
         for col in range(2, 8):
             ws.cell(row=row, column=col).border = MEDIUM_BORDER
             ws.cell(row=row, column=col).fill = LIGHT_FILL
+        cat_total_row = row
         row += 3
         
-        # Requirements detail
-        ws.merge_cells(f'B{row}:H{row}')
-        ws[f'B{row}'] = 'DETTAGLIO REQUISITI'
+        # Detailed requirements with expanded certifications
+        ws.merge_cells(f'B{row}:L{row}')
+        ws[f'B{row}'] = 'DETTAGLIO REQUISITI E CERTIFICAZIONI'
         ws[f'B{row}'].font = SECTION_FONT
         row += 1
         
-        det_headers = ['ID', 'Requisito', 'Tipo', 'Score Raw', 'Max Raw', '%', 'Peso Gara', 'Score Pesato', 'Status']
+        det_headers = ['ID', 'Requisito', 'Certificazione', 'Azienda', 'Tipo', 'Score Raw', 'Max Raw', '%', 'Peso Gara', 'Score Pesato', 'Status']
         for col, header in enumerate(det_headers, start=2):
             cell = ws.cell(row=row, column=col, value=header)
             cell.font = HEADER_FONT
@@ -518,41 +556,150 @@ class ExcelReportGenerator:
         
         for req in reqs:
             req_id = req.get('id', '')
+            req_type = req.get('type', 'resource')
             raw_score = self.details.get(req_id, 0)
             max_score = req.get('max_points', 0)
             gara_weight = req.get('gara_weight', 0)
-            weighted = self.weighted_scores.get(req_id, 0)
-            req_pct = raw_score / max_score if max_score > 0 else 0
+            tech_input = self.tech_inputs_full.get(req_id, {})
             
-            ws.cell(row=row, column=2, value=req_id).font = Font(size=9, color=COLORS['muted'])
-            ws.cell(row=row, column=3, value=req.get('label', '')).alignment = WRAP
-            ws.cell(row=row, column=4, value=type_labels.get(req.get('type', ''), req.get('type', '')))
-            ws.cell(row=row, column=5, value=raw_score).number_format = '0.00'
-            ws.cell(row=row, column=6, value=max_score).number_format = '0.00'
-            ws.cell(row=row, column=7, value=req_pct).number_format = '0.0%'
-            ws.cell(row=row, column=8, value=gara_weight).number_format = '0.00'
-            ws.cell(row=row, column=9, value=weighted).number_format = '0.00'
-            
-            if req_pct >= 0.8:
-                ws.cell(row=row, column=10, value='OK')
-            elif req_pct >= 0.5:
-                ws.cell(row=row, column=10, value='WARN')
-            elif req_pct > 0:
-                ws.cell(row=row, column=10, value='LOW')
+            if req_type == 'resource':
+                # Expand by certification and company
+                cert_company_counts = tech_input.get('cert_company_counts', {})
+                selected_prof_certs = req.get('selected_prof_certs', [])
+                
+                # Get all certifications with their company assignments
+                cert_entries = []
+                for cert_name, company_counts in cert_company_counts.items():
+                    if isinstance(company_counts, dict):
+                        for company, count in company_counts.items():
+                            if count > 0:
+                                cert_entries.append({
+                                    'cert_name': cert_name,
+                                    'company': company,
+                                    'count': count
+                                })
+                
+                # If no cert entries but we have selected_prof_certs, use them
+                if not cert_entries and selected_prof_certs:
+                    for cert in selected_prof_certs:
+                        cert_entries.append({
+                            'cert_name': cert,
+                            'company': 'Lutech',
+                            'count': 0
+                        })
+                
+                # If still no entries, create a single row
+                if not cert_entries:
+                    cert_entries = [{'cert_name': '-', 'company': 'Lutech', 'count': 0}]
+                
+                # Write a row for each certification
+                first_row_for_req = row
+                for i, entry in enumerate(cert_entries):
+                    is_first = (i == 0)
+                    
+                    # ID (only first row)
+                    id_cell = ws.cell(row=row, column=2, value=req_id if is_first else '')
+                    id_cell.font = Font(size=9, color=COLORS['muted'])
+                    
+                    # Requisito (only first row)
+                    ws.cell(row=row, column=3, value=req.get('label', '') if is_first else '').alignment = WRAP
+                    
+                    # Certificazione
+                    ws.cell(row=row, column=4, value=entry['cert_name'])
+                    
+                    # Azienda
+                    company = entry['company']
+                    company_cell = ws.cell(row=row, column=5, value=company)
+                    company_cell.font = Font(bold=True, color=self.company_colors.get(company, COLORS['dark']))
+                    
+                    # Tipo
+                    ws.cell(row=row, column=6, value=type_labels.get(req_type, req_type) if is_first else '')
+                    
+                    # Score Raw (only first row, with formula reference)
+                    if is_first:
+                        ws.cell(row=row, column=7, value=raw_score).number_format = '0.00'
+                        ws.cell(row=row, column=7).fill = INPUT_FILL
+                    
+                    # Max Raw (only first row)
+                    if is_first:
+                        ws.cell(row=row, column=8, value=max_score).number_format = '0.00'
+                    
+                    # % (only first row - formula)
+                    if is_first:
+                        ws.cell(row=row, column=9, value=f'=IF(H{row}=0,0,G{row}/H{row})').number_format = '0.0%'
+                        ws.cell(row=row, column=9).fill = FORMULA_FILL
+                    
+                    # Peso Gara (only first row)
+                    if is_first:
+                        ws.cell(row=row, column=10, value=gara_weight).number_format = '0.00'
+                    
+                    # Score Pesato - FORMULA (only first row)
+                    if is_first:
+                        ws.cell(row=row, column=11, value=f'=IF(H{row}=0,0,G{row}*J{row}/H{row})').number_format = '0.00'
+                        ws.cell(row=row, column=11).fill = FORMULA_FILL
+                        ws.cell(row=row, column=11).font = Font(bold=True, color=COLORS['primary'])
+                    
+                    # Status (only first row)
+                    if is_first:
+                        req_pct = raw_score / max_score if max_score > 0 else 0
+                        if req_pct >= 0.8:
+                            ws.cell(row=row, column=12, value='OK')
+                        elif req_pct >= 0.5:
+                            ws.cell(row=row, column=12, value='WARN')
+                        elif req_pct > 0:
+                            ws.cell(row=row, column=12, value='LOW')
+                        else:
+                            ws.cell(row=row, column=12, value='MISS')
+                    
+                    for col in range(2, 13):
+                        ws.cell(row=row, column=col).border = THIN_BORDER
+                    row += 1
+                    
             else:
-                ws.cell(row=row, column=10, value='MISS')
-            
-            for col in range(2, 11):
-                ws.cell(row=row, column=col).border = THIN_BORDER
-            row += 1
+                # Non-resource types (reference, project) - single row
+                assigned = tech_input.get('assigned_company', '') or 'Lutech'
+                
+                ws.cell(row=row, column=2, value=req_id).font = Font(size=9, color=COLORS['muted'])
+                ws.cell(row=row, column=3, value=req.get('label', '')).alignment = WRAP
+                ws.cell(row=row, column=4, value='-')  # No certification
+                
+                company_cell = ws.cell(row=row, column=5, value=assigned)
+                company_cell.font = Font(bold=True, color=self.company_colors.get(assigned, COLORS['dark']))
+                
+                ws.cell(row=row, column=6, value=type_labels.get(req_type, req_type))
+                ws.cell(row=row, column=7, value=raw_score).number_format = '0.00'
+                ws.cell(row=row, column=7).fill = INPUT_FILL
+                ws.cell(row=row, column=8, value=max_score).number_format = '0.00'
+                ws.cell(row=row, column=9, value=f'=IF(H{row}=0,0,G{row}/H{row})').number_format = '0.0%'
+                ws.cell(row=row, column=9).fill = FORMULA_FILL
+                ws.cell(row=row, column=10, value=gara_weight).number_format = '0.00'
+                # Weighted score formula
+                ws.cell(row=row, column=11, value=f'=IF(H{row}=0,0,G{row}*J{row}/H{row})').number_format = '0.00'
+                ws.cell(row=row, column=11).fill = FORMULA_FILL
+                ws.cell(row=row, column=11).font = Font(bold=True, color=COLORS['primary'])
+                
+                req_pct = raw_score / max_score if max_score > 0 else 0
+                if req_pct >= 0.8:
+                    ws.cell(row=row, column=12, value='OK')
+                elif req_pct >= 0.5:
+                    ws.cell(row=row, column=12, value='WARN')
+                elif req_pct > 0:
+                    ws.cell(row=row, column=12, value='LOW')
+                else:
+                    ws.cell(row=row, column=12, value='MISS')
+                
+                for col in range(2, 13):
+                    ws.cell(row=row, column=col).border = THIN_BORDER
+                row += 1
         
+        # Color scale for percentage column
         if row > req_start_row:
             rule = ColorScaleRule(
                 start_type='num', start_value=0, start_color='F8D7DA',
                 mid_type='num', mid_value=0.5, mid_color='FFF3CD',
                 end_type='num', end_value=1, end_color='D4EDDA'
             )
-            ws.conditional_formatting.add(f'G{req_start_row}:G{row-1}', rule)
+            ws.conditional_formatting.add(f'I{req_start_row}:I{row-1}', rule)
         
         ws.freeze_panes = 'C5'
 
