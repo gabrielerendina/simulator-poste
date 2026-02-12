@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Star, Info, ChevronDown, ChevronUp, Plus, Minus } from 'lucide-react';
+import { Star, Info, ChevronDown, ChevronUp, Plus, Minus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../utils/formatters';
 import { useConfig } from '../features/config/context/ConfigContext';
@@ -147,59 +147,32 @@ export default function TechEvaluator() {
                     {expandedSections.companyCerts ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
                 </button>
                 {expandedSections.companyCerts && (
-                    <div className="p-6 space-y-4">
+                    <div className="p-6 space-y-3">
                         {lotData.company_certs && lotData.company_certs.length > 0 ? (
                             lotData.company_certs.map((cert) => {
                                 const status = certs[cert.label] || "none";
-                                const currentPoints = status === "all" ? cert.points : status === "partial" ? (cert.points_partial || 0) : 0;
+                                const statusColor = status === "all" ? "text-green-600" : status === "partial" ? "text-amber-600" : "text-red-500";
+                                const borderColor = status === "all" ? "border-green-300 bg-green-50" : status === "partial" ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white";
                                 
                                 return (
-                                    <div key={cert.label} className="p-4 rounded-lg border border-slate-200 bg-slate-50">
-                                        <div className="flex justify-between items-start mb-3">
-                                            <span className="text-sm font-semibold text-slate-800">{cert.label}</span>
-                                            <span className={`text-sm font-bold ${status !== "none" ? 'text-blue-600' : 'text-slate-400'}`}>
-                                                +{formatNumber(currentPoints, 1)}
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            <button
-                                                onClick={() => setCertStatus(cert.label, "none")}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                                    status === "none" 
-                                                        ? 'bg-slate-600 text-white' 
-                                                        : 'bg-white border border-slate-300 text-slate-600 hover:border-slate-400'
-                                                }`}
-                                            >
-                                                {t('tech.rti_none')}
-                                            </button>
+                                    <div key={cert.label} className={`flex items-center justify-between gap-4 p-3 rounded-lg border ${borderColor} transition-all`}>
+                                        <span className="text-sm font-medium text-slate-800 flex-1">{cert.label}</span>
+                                        <select
+                                            value={status}
+                                            onChange={(e) => setCertStatus(cert.label, e.target.value)}
+                                            className={`px-3 py-1.5 rounded-lg text-sm font-semibold border-0 outline-none cursor-pointer ${statusColor} bg-transparent`}
+                                        >
+                                            <option value="none" className="text-red-600">{t('tech.cert_absent')}</option>
                                             {(cert.points_partial > 0) && (
-                                                <button
-                                                    onClick={() => setCertStatus(cert.label, "partial")}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                                        status === "partial" 
-                                                            ? 'bg-amber-500 text-white' 
-                                                            : 'bg-white border border-slate-300 text-slate-600 hover:border-amber-400'
-                                                    }`}
-                                                >
-                                                    {t('tech.rti_partial')} (+{formatNumber(cert.points_partial, 1)})
-                                                </button>
+                                                <option value="partial" className="text-amber-600">{t('tech.cert_partial')}</option>
                                             )}
-                                            <button
-                                                onClick={() => setCertStatus(cert.label, "all")}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                                    status === "all" 
-                                                        ? 'bg-green-500 text-white' 
-                                                        : 'bg-white border border-slate-300 text-slate-600 hover:border-green-400'
-                                                }`}
-                                            >
-                                                {t('tech.rti_all')} (+{formatNumber(cert.points, 1)})
-                                            </button>
-                                        </div>
+                                            <option value="all" className="text-green-600">{t('tech.cert_complete')}</option>
+                                        </select>
                                     </div>
                                 );
                             })
                         ) : (
-                            <div className="col-span-full text-center py-4 text-slate-400 text-sm italic">
+                            <div className="text-center py-4 text-slate-400 text-sm italic">
                                 {t('config.no_certs')}
                             </div>
                         )}

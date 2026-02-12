@@ -227,6 +227,9 @@
         "rti_none": "Nessuna",
         "rti_partial": "Almeno una",
         "rti_all": "Tutte le RTI",
+        "cert_absent": "Assente",
+        "cert_partial": "Parziale",
+        "cert_complete": "Completo",
         "qual_options": {
             "absent": "Assente",
             "partial": "Parziale",
