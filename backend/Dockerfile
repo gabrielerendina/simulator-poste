@@ -30,5 +30,5 @@ USER appuser
 # Espone la porta del backend
 EXPOSE 8000
 
-# Avvia il server con workers multipli per produzione
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "main:app", "--bind", "0.0.0.0:8000"]
+# Avvia il server con 2 workers (fit within 512Mi memory limit)
+CMD ["gunicorn", "-w", "2", "-k", "uvicorn.workers.UvicornWorker", "main:app", "--bind", "0.0.0.0:8000", "--timeout", "120"]
