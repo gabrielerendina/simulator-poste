@@ -517,6 +517,14 @@ class ExcelReportGenerator:
             cell.border = THIN_BORDER
         row += 1
         
+        # Create data validation for Azienda column
+        from openpyxl.worksheet.datavalidation import DataValidation
+        company_list = ','.join(self.rti_companies)
+        company_dv = DataValidation(type='list', formula1=f'"{company_list}"', allow_blank=False)
+        company_dv.error = 'Selezionare un\'azienda dalla lista'
+        company_dv.errorTitle = 'Azienda non valida'
+        ws.add_data_validation(company_dv)
+        
         req_start_row = row
         type_labels = {'resource': 'Cert. Prof.', 'reference': 'Referenza', 'project': 'Progetto'}
         
@@ -577,6 +585,8 @@ class ExcelReportGenerator:
                     company = entry['company']
                     company_cell = ws.cell(row=row, column=5, value=company)
                     company_cell.font = Font(bold=True, color=self.company_colors.get(company, COLORS['dark']))
+                    company_cell.fill = INPUT_FILL
+                    company_dv.add(company_cell)
                     
                     # Tipo
                     ws.cell(row=row, column=6, value=type_labels.get(req_type, req_type) if is_first else '')
@@ -631,6 +641,8 @@ class ExcelReportGenerator:
                 
                 company_cell = ws.cell(row=row, column=5, value=assigned)
                 company_cell.font = Font(bold=True, color=self.company_colors.get(assigned, COLORS['dark']))
+                company_cell.fill = INPUT_FILL
+                company_dv.add(company_cell)
                 
                 ws.cell(row=row, column=6, value=type_labels.get(req_type, req_type))
                 ws.cell(row=row, column=7, value=raw_score).number_format = '0.00'
