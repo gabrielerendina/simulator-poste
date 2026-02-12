@@ -184,7 +184,7 @@ export default function Sidebar({
                                         max="100"
                                         value={competitorDiscount.toFixed(1)}
                                         onChange={(e) => setDiscount('competitorDiscount', Math.round(parseFloat(e.target.value) * 10) / 10 || 0)}
-                                        className="w-14 text-sm font-mono text-right px-2 py-1.5 focus:outline-none focus:bg-orange-50"
+                                        className="w-16 text-sm font-mono text-right px-2 py-1.5 focus:outline-none focus:bg-orange-50"
                                     />
                                     <span className="text-xs text-slate-400 pr-2 bg-slate-50 py-1.5 pl-0.5">%</span>
                                 </div>
@@ -216,7 +216,7 @@ export default function Sidebar({
                                         max="100"
                                         value={myDiscount.toFixed(1)}
                                         onChange={(e) => setDiscount('myDiscount', Math.round(parseFloat(e.target.value) * 10) / 10 || 0)}
-                                        className={`w-14 text-sm font-mono text-right px-2 py-1.5 focus:outline-none font-bold ${isBest ? 'text-green-600 focus:bg-green-50' : 'text-blue-600 focus:bg-blue-50'}`}
+                                        className={`w-16 text-sm font-mono text-right px-2 py-1.5 focus:outline-none font-bold ${isBest ? 'text-green-600 focus:bg-green-50' : 'text-blue-600 focus:bg-blue-50'}`}
                                     />
                                     <span className="text-xs text-slate-400 pr-2 bg-slate-50 py-1.5 pl-0.5">%</span>
                                 </div>
@@ -285,7 +285,7 @@ export default function Sidebar({
                                                         max="100"
                                                         value={quota.toFixed(1)}
                                                         onChange={(e) => handleQuotaChange(company, e.target.value)}
-                                                        className="w-14 text-sm font-mono text-right px-2 py-1.5 focus:outline-none focus:bg-indigo-50"
+                                                        className="w-16 text-sm font-mono text-right px-2 py-1.5 focus:outline-none focus:bg-indigo-50"
                                                     />
                                                     <span className="text-xs text-slate-400 pr-2 bg-slate-50 py-1.5 pl-0.5">%</span>
                                                 </div>
