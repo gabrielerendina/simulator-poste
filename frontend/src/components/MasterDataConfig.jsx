@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { Plus, Trash2, ShieldCheck, Award, Info, Settings, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Search, Save, AlertCircle, Check } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, Award, Info, Settings, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Search, Save, AlertCircle, Check, Building2 } from 'lucide-react';
 import { API_URL } from '../utils/api';
 
 export default function MasterDataConfig() {
@@ -9,7 +9,8 @@ export default function MasterDataConfig() {
     const [data, setData] = useState({
         company_certs: [],
         prof_certs: [],
-        requirement_labels: []
+        requirement_labels: [],
+        rti_companies: ['Lutech']
     });
     const [vendors, setVendors] = useState([]);
     const [expandedVendor, setExpandedVendor] = useState(null);
@@ -42,6 +43,7 @@ export default function MasterDataConfig() {
                     company_certs: masterRes.data.company_certs ? [...new Set(masterRes.data.company_certs)] : [],
                     prof_certs: masterRes.data.prof_certs ? [...new Set(masterRes.data.prof_certs)] : [],
                     requirement_labels: masterRes.data.requirement_labels ? [...new Set(masterRes.data.requirement_labels)] : [],
+                    rti_companies: masterRes.data.rti_companies ? [...new Set(masterRes.data.rti_companies)] : ['Lutech'],
                 };
                 setData(cleanedData);
                 setVendors(vendorRes.data || []);
@@ -231,6 +233,7 @@ export default function MasterDataConfig() {
     const sections = [
         { id: 'company_certs', label: t('master.company_certs'), icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
         { id: 'prof_certs', label: t('master.prof_certs'), icon: Award, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { id: 'rti_companies', label: t('master.rti_companies'), icon: Building2, color: 'text-indigo-600', bg: 'bg-indigo-50' },
         { id: 'economic_formulas', label: t('config.economic_formula'), icon: Info, color: 'text-orange-600', bg: 'bg-orange-50' },
         { id: 'ocr_settings', label: 'Impostazioni OCR', icon: Settings, color: 'text-purple-600', bg: 'bg-purple-50' },
     ];

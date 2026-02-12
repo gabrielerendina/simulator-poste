@@ -42,6 +42,7 @@ class MasterDataModel(Base):
     prof_certs = Column(SQLiteJSON, default=list)
     requirement_labels = Column(SQLiteJSON, default=list)
     economic_formulas = Column(SQLiteJSON, default=list)
+    rti_companies = Column(SQLiteJSON, default=list)  # RTI partner companies for assignments
 
 
 class VendorConfigModel(Base):

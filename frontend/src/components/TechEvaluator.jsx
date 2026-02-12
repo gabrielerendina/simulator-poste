@@ -7,7 +7,7 @@ import { useSimulation } from '../features/simulation/context/SimulationContext'
 
 export default function TechEvaluator() {
     const { t } = useTranslation();
-    const { config } = useConfig();
+    const { config, masterData } = useConfig();
     const {
         selectedLot,
         techInputs: inputs,
@@ -268,6 +268,8 @@ export default function TechEvaluator() {
                                                     {req.selected_prof_certs && req.selected_prof_certs.length > 0 ? (
                                                         req.selected_prof_certs.map(cert => {
                                                             const count = (cur.cert_counts?.[cert]) || 0;
+                                                            const certCompanies = cur.cert_companies?.[cert] || [];
+                                                            const rtiCompanies = masterData?.rti_companies || ['Lutech'];
 
                                                             const updateCount = (delta) => {
                                                                 const counts = { ...(cur.cert_counts || {}) };
@@ -284,44 +286,82 @@ export default function TechEvaluator() {
                                                                 });
                                                             };
 
+                                                            const toggleCompany = (company) => {
+                                                                const currentInput = inputs[req.id] || {};
+                                                                const companies = { ...(currentInput.cert_companies || {}) };
+                                                                const certComps = companies[cert] || [];
+                                                                if (certComps.includes(company)) {
+                                                                    companies[cert] = certComps.filter(c => c !== company);
+                                                                } else {
+                                                                    companies[cert] = [...certComps, company];
+                                                                }
+                                                                setTechInput(req.id, {
+                                                                    ...currentInput,
+                                                                    cert_companies: companies
+                                                                });
+                                                            };
+
                                                             return (
-                                                                <div key={cert} className="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-100">
-                                                                    <span className="text-[11px] font-semibold text-slate-700 truncate mr-2" title={cert}>{cert}</span>
-                                                                    <div className="flex items-center gap-1 shrink-0">
-                                                                        <button
-                                                                            onClick={() => updateCount(-1)}
-                                                                            className="p-2.5 min-w-[40px] min-h-[40px] rounded-md hover:bg-slate-200 active:bg-slate-300 text-slate-500 transition-colors flex items-center justify-center"
-                                                                            aria-label={t('common.decrease')}
-                                                                        >
-                                                                            <Minus className="w-4 h-4" />
-                                                                        </button>
-                                                                        <input
-                                                                            type="number"
-                                                                            min="0"
-                                                                            value={count}
-                                                                            onChange={(e) => {
-                                                                                const val = Math.min(maxC, Math.max(0, parseInt(e.target.value) || 0));
-                                                                                const counts = { ...(cur.cert_counts || {}) };
-                                                                                counts[cert] = val;
-                                                                                const newTotalC = req.selected_prof_certs.reduce((s, c) => s + (counts[c] || 0), 0);
-                                                                                // Single update to avoid race condition
-                                                                                const currentInput = inputs[req.id] || {};
-                                                                                setTechInput(req.id, {
-                                                                                    ...currentInput,
-                                                                                    cert_counts: counts,
-                                                                                    c_val: newTotalC
-                                                                                });
-                                                                            }}
-                                                                            className="w-12 text-center bg-white border border-slate-200 rounded text-sm font-bold py-2 focus:ring-1 focus:ring-indigo-500 outline-none"
-                                                                        />
-                                                                        <button
-                                                                            onClick={() => updateCount(1)}
-                                                                            className="p-2.5 min-w-[40px] min-h-[40px] rounded-md hover:bg-slate-200 active:bg-slate-300 text-slate-500 transition-colors flex items-center justify-center"
-                                                                            aria-label={t('common.increase')}
-                                                                        >
-                                                                            <Plus className="w-4 h-4" />
-                                                                        </button>
+                                                                <div key={cert} className="p-2 rounded bg-slate-50 border border-slate-100">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-[11px] font-semibold text-slate-700 truncate mr-2" title={cert}>{cert}</span>
+                                                                        <div className="flex items-center gap-1 shrink-0">
+                                                                            <button
+                                                                                onClick={() => updateCount(-1)}
+                                                                                className="p-2.5 min-w-[40px] min-h-[40px] rounded-md hover:bg-slate-200 active:bg-slate-300 text-slate-500 transition-colors flex items-center justify-center"
+                                                                                aria-label={t('common.decrease')}
+                                                                            >
+                                                                                <Minus className="w-4 h-4" />
+                                                                            </button>
+                                                                            <input
+                                                                                type="number"
+                                                                                min="0"
+                                                                                value={count}
+                                                                                onChange={(e) => {
+                                                                                    const val = Math.min(maxC, Math.max(0, parseInt(e.target.value) || 0));
+                                                                                    const counts = { ...(cur.cert_counts || {}) };
+                                                                                    counts[cert] = val;
+                                                                                    const newTotalC = req.selected_prof_certs.reduce((s, c) => s + (counts[c] || 0), 0);
+                                                                                    // Single update to avoid race condition
+                                                                                    const currentInput = inputs[req.id] || {};
+                                                                                    setTechInput(req.id, {
+                                                                                        ...currentInput,
+                                                                                        cert_counts: counts,
+                                                                                        c_val: newTotalC
+                                                                                    });
+                                                                                }}
+                                                                                className="w-12 text-center bg-white border border-slate-200 rounded text-sm font-bold py-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                                            />
+                                                                            <button
+                                                                                onClick={() => updateCount(1)}
+                                                                                className="p-2.5 min-w-[40px] min-h-[40px] rounded-md hover:bg-slate-200 active:bg-slate-300 text-slate-500 transition-colors flex items-center justify-center"
+                                                                                aria-label={t('common.increase')}
+                                                                            >
+                                                                                <Plus className="w-4 h-4" />
+                                                                            </button>
+                                                                        </div>
                                                                     </div>
+                                                                    {/* Company assignment for this cert */}
+                                                                    {count > 0 && rtiCompanies.length > 1 && (
+                                                                        <div className="mt-2 pt-2 border-t border-slate-200">
+                                                                            <span className="text-[9px] font-bold text-slate-500 uppercase">{t('tech.company_assignment')}</span>
+                                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                                {rtiCompanies.map(company => (
+                                                                                    <button
+                                                                                        key={company}
+                                                                                        onClick={() => toggleCompany(company)}
+                                                                                        className={`px-2 py-0.5 text-[10px] rounded-full transition-colors ${
+                                                                                            certCompanies.includes(company)
+                                                                                                ? 'bg-indigo-500 text-white'
+                                                                                                : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                                                                                        }`}
+                                                                                    >
+                                                                                        {company}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             );
                                                         })
@@ -433,6 +473,16 @@ export default function TechEvaluator() {
                             })();
 
                             const reqWeightedScore = results?.weighted_scores?.[req.id] || 0;
+                            const rtiCompanies = masterData?.rti_companies || ['Lutech'];
+                            const assignedCompany = cur.assigned_company || '';
+
+                            const setAssignedCompany = (company) => {
+                                const currentInput = inputs[req.id] || {};
+                                setTechInput(req.id, {
+                                    ...currentInput,
+                                    assigned_company: company
+                                });
+                            };
 
                             return (
                                 <div key={req.id} className="p-6 hover:bg-slate-50 transition-colors">
@@ -446,6 +496,22 @@ export default function TechEvaluator() {
                                                 <span className="text-[10px] font-bold text-slate-500">Raw: <span className="text-slate-700">{formatNumber(reqRawScore, 2)} / {formatNumber(req.max_points, 2)}</span></span>
                                                 <span className="text-[10px] font-bold text-amber-600">Pesato: <span className="text-amber-700">{formatNumber(reqWeightedScore, 2)} / {formatNumber(req.gara_weight || 0, 2)}</span></span>
                                             </div>
+                                            {/* Company assignment for project/reference */}
+                                            {rtiCompanies.length > 1 && (
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <span className="text-[9px] font-bold text-slate-500 uppercase">{t('tech.assigned_company')}:</span>
+                                                    <select
+                                                        value={assignedCompany}
+                                                        onChange={(e) => setAssignedCompany(e.target.value)}
+                                                        className="text-xs px-2 py-1 border border-slate-200 rounded bg-white text-slate-700 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                    >
+                                                        <option value="">{t('common.select')}</option>
+                                                        {rtiCompanies.map(company => (
+                                                            <option key={company} value={company}>{company}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="text-right">
                                             <span className="text-lg font-bold text-blue-600">{formatNumber(pts, 2)}</span>

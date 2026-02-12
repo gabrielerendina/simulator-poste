@@ -67,5 +67,8 @@
             "max_value": 5,
             "levels_ref": "criteria_judgement_levels"
         }
+    ],
+    "rti_companies": [
+        "Lutech"
     ]
 }

@@ -132,6 +132,7 @@ def seed_initial_data(db: Session) -> None:
             prof_certs=master_data_file.get("prof_certs", []),
             requirement_labels=master_data_file.get("requirement_labels", []),
             economic_formulas=master_data_file.get("economic_formulas", []),
+            rti_companies=master_data_file.get("rti_companies", ["Lutech"]),
         )
         db.add(db_master)
 
@@ -230,6 +231,7 @@ def update_master_data(
     db_master.requirement_labels = master_data.requirement_labels
     if master_data.economic_formulas:
         db_master.economic_formulas = master_data.economic_formulas
+    db_master.rti_companies = master_data.rti_companies or ["Lutech"]
 
     db.commit()
     db.refresh(db_master)
@@ -242,7 +244,8 @@ def update_master_data(
         "company_certs": db_master.company_certs or [],
         "prof_certs": db_master.prof_certs or [],
         "requirement_labels": db_master.requirement_labels or [],
-        "economic_formulas": db_master.economic_formulas or []
+        "economic_formulas": db_master.economic_formulas or [],
+        "rti_companies": db_master.rti_companies or ["Lutech"]
     }
     save_json_file("master_data.json", json_data)
     

@@ -185,6 +185,7 @@ class MasterData(BaseModel):
     prof_certs: List[str] = Field(default_factory=list)
     requirement_labels: List[str] = Field(default_factory=list)
     economic_formulas: Optional[List[Dict[str, Any]]] = None
+    rti_companies: List[str] = Field(default_factory=lambda: ["Lutech"])  # RTI partner companies
 
     model_config = ConfigDict(from_attributes=True)
 

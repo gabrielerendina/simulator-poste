@@ -18,7 +18,8 @@
         "formula": "Formula",
         "decrease": "Diminuisci",
         "increase": "Aumenta",
-        "warning": "Attenzione"
+        "warning": "Attenzione",
+        "select": "Seleziona..."
     },
     "sidebar": {
         "title": "Seleziona Gara/Lotto",
@@ -193,6 +194,8 @@
         "subtitle": "Gestisci le liste di certificazioni e requisiti validi per tutte le simulazioni",
         "company_certs": "Certificazioni Aziendali Globali",
         "prof_certs": "Certificazioni Professionali Globali",
+        "rti_companies": "Aziende RTI",
+        "rti_companies_desc": "Definisci le aziende del raggruppamento temporaneo per assegnazione certificazioni e referenze",
         "req_labels": "Etichette Requisiti Globali",
         "add_item": "Aggiungi Elemento",
         "save_success": "Master Data salvati con successo",
@@ -225,6 +228,8 @@
         "config_required": "Configurazione richiesta",
         "max_configured": "Max configurato",
         "no_certs_selected": "Nessuna certificazione specifica selezionata in configurazione.",
+        "company_assignment": "Assegnazione Azienda",
+        "assigned_company": "Azienda",
         "manual_adjustment": "Regolazione Manuale",
         "total_c": "TOTALE C",
         "certs_exceed_resources": "Il numero totale di certificazioni (C={{c}}) è superiore al numero di risorse (R={{r}}). Assicurati che sia corretto per la formula (2 × R) + (R × C).",
