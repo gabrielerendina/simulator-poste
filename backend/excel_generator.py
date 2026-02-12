@@ -239,7 +239,7 @@ class ExcelReportGenerator:
         ws[f'E{kpi_row}'].font = KPI_LABEL_FONT
         ws[f'E{kpi_row}'].alignment = CENTER
         ws[f'E{kpi_row}'].border = THIN_BORDER
-        ws[f'E{kpi_row+1}'] = f"=Economico!C{self.econ_sconto_row}/100"
+        ws[f'E{kpi_row+1}'] = f"=Economico!C{self.econ_sconto_row}"
         ws[f'E{kpi_row+1}'].font = Font(size=20, bold=True, color=COLORS['dark'])
         ws[f'E{kpi_row+1}'].alignment = CENTER
         ws[f'E{kpi_row+1}'].number_format = '0.0%'
@@ -263,20 +263,20 @@ class ExcelReportGenerator:
         ws[f'C{row}'].number_format = '€ #,##0.00'
         row += 1
         
-        ws[f'B{row}'] = 'Sconto (%)'
+        ws[f'B{row}'] = 'Sconto'
         ws[f'B{row}'].font = LABEL_FONT
         ws[f'C{row}'] = f"=Economico!C{self.econ_sconto_row}"
         ws[f'C{row}'].fill = FORMULA_FILL
         ws[f'C{row}'].border = THIN_BORDER
-        ws[f'C{row}'].number_format = '0.0'
+        ws[f'C{row}'].number_format = '0.0%'
         row += 1
         
-        ws[f'B{row}'] = 'Sconto Best Offer (%)'
+        ws[f'B{row}'] = 'Sconto Best Offer'
         ws[f'B{row}'].font = LABEL_FONT
         ws[f'C{row}'] = f"=Economico!C{self.econ_sconto_best_row}"
         ws[f'C{row}'].fill = FORMULA_FILL
         ws[f'C{row}'].border = THIN_BORDER
-        ws[f'C{row}'].number_format = '0.0'
+        ws[f'C{row}'].number_format = '0.0%'
         row += 1
         
         ws[f'B{row}'] = 'Alpha (α)'

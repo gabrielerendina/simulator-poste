@@ -350,13 +350,10 @@ class PDFReportGenerator:
             spaceAfter=6,
         ))
 
-        self.styles.add(ParagraphStyle(
-            name='BodyText',
-            parent=self.styles['Normal'],
-            fontSize=9,
-            spaceAfter=8,
-            leading=12
-        ))
+        # Modify existing BodyText instead of adding duplicate
+        self.styles['BodyText'].fontSize = 9
+        self.styles['BodyText'].spaceAfter = 8
+        self.styles['BodyText'].leading = 12
 
         self.styles.add(ParagraphStyle(
             name='SmallText',
