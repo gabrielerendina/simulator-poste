@@ -494,6 +494,10 @@ class ExcelReportGenerator:
             weighted_cell.border = THIN_BORDER
             row += 1
         
+        # Store category row references for Analytics sheet
+        self.tech_cat_rows = cat_rows
+        self.tech_cat_start_row = cat_start_row
+        
         # Total row with formulas
         ws.cell(row=row, column=2, value='TOTALE').font = Font(bold=True)
         ws.cell(row=row, column=2).border = MEDIUM_BORDER
@@ -549,6 +553,9 @@ class ExcelReportGenerator:
         
         req_start_row = row
         type_labels = {'resource': 'Cert. Prof.', 'reference': 'Referenza', 'project': 'Progetto'}
+        
+        # Track requirement rows for Analytics references
+        self.tech_req_rows = {}
         
         for req in reqs:
             req_id = req.get('id', '')
@@ -652,6 +659,9 @@ class ExcelReportGenerator:
                     for col in range(2, 13):
                         ws.cell(row=row, column=col).border = THIN_BORDER
                     row += 1
+                
+                # Store the first row of this requirement for Analytics reference
+                self.tech_req_rows[req_id] = first_row_for_req
                     
             else:
                 # Non-resource types (reference, project) - single row
@@ -690,6 +700,9 @@ class ExcelReportGenerator:
                 
                 for col in range(2, 13):
                     ws.cell(row=row, column=col).border = THIN_BORDER
+                
+                # Store this row for Analytics reference
+                self.tech_req_rows[req_id] = row
                 row += 1
         
         # Color scale for percentage column
@@ -1253,73 +1266,36 @@ class ExcelReportGenerator:
         
         gap_start_row = row
         
-        # Company Certs category
-        company_cert_obtained = self.category_scores.get('company_certs', 0)
-        company_cert_max = sum(c.get('gara_weight', 0) for c in self.lot_config.get('company_certs', []))
-        if company_cert_max > 0:
-            ws.cell(row=row, column=2, value='Certificazioni Aziendali').border = THIN_BORDER
-            ws.cell(row=row, column=3, value=company_cert_obtained).number_format = '0.00'
-            ws.cell(row=row, column=3).border = THIN_BORDER
-            ws.cell(row=row, column=4, value=company_cert_max).number_format = '0.00'
-            ws.cell(row=row, column=4).border = THIN_BORDER
-            ws.cell(row=row, column=5, value=f'=C{row}/D{row}').number_format = '0.0%'
-            ws.cell(row=row, column=5).fill = FORMULA_FILL
-            ws.cell(row=row, column=5).border = THIN_BORDER
-            ws.cell(row=row, column=6, value=f'=D{row}-C{row}').number_format = '0.00'
-            ws.cell(row=row, column=6).fill = FORMULA_FILL
-            ws.cell(row=row, column=6).border = THIN_BORDER
-            row += 1
+        # Categories reference Tecnico sheet BREAKDOWN PER CATEGORIA table
+        # Column G = Punteggio Pesato, Column F = Peso Gara
+        cat_key_map = {
+            'company_certs': ('Certificazioni Aziendali', 'company_certs'),
+            'resource': ('Risorse/Cert. Professionali', 'resource'),
+            'reference': ('Referenze', 'reference'),
+            'project': ('Progetti', 'project'),
+        }
         
-        # Resource requirements
-        resource_obtained = self.category_scores.get('resources', 0)
-        resource_max = sum(r.get('gara_weight', 0) for r in self.lot_config.get('reqs', []) if r.get('type') == 'resource')
-        if resource_max > 0:
-            ws.cell(row=row, column=2, value='Risorse/Cert. Professionali').border = THIN_BORDER
-            ws.cell(row=row, column=3, value=resource_obtained).number_format = '0.00'
-            ws.cell(row=row, column=3).border = THIN_BORDER
-            ws.cell(row=row, column=4, value=resource_max).number_format = '0.00'
-            ws.cell(row=row, column=4).border = THIN_BORDER
-            ws.cell(row=row, column=5, value=f'=C{row}/D{row}').number_format = '0.0%'
-            ws.cell(row=row, column=5).fill = FORMULA_FILL
-            ws.cell(row=row, column=5).border = THIN_BORDER
-            ws.cell(row=row, column=6, value=f'=D{row}-C{row}').number_format = '0.00'
-            ws.cell(row=row, column=6).fill = FORMULA_FILL
-            ws.cell(row=row, column=6).border = THIN_BORDER
-            row += 1
-        
-        # References
-        ref_obtained = self.category_scores.get('references', 0)
-        ref_max = sum(r.get('gara_weight', 0) for r in self.lot_config.get('reqs', []) if r.get('type') == 'reference')
-        if ref_max > 0:
-            ws.cell(row=row, column=2, value='Referenze').border = THIN_BORDER
-            ws.cell(row=row, column=3, value=ref_obtained).number_format = '0.00'
-            ws.cell(row=row, column=3).border = THIN_BORDER
-            ws.cell(row=row, column=4, value=ref_max).number_format = '0.00'
-            ws.cell(row=row, column=4).border = THIN_BORDER
-            ws.cell(row=row, column=5, value=f'=C{row}/D{row}').number_format = '0.0%'
-            ws.cell(row=row, column=5).fill = FORMULA_FILL
-            ws.cell(row=row, column=5).border = THIN_BORDER
-            ws.cell(row=row, column=6, value=f'=D{row}-C{row}').number_format = '0.00'
-            ws.cell(row=row, column=6).fill = FORMULA_FILL
-            ws.cell(row=row, column=6).border = THIN_BORDER
-            row += 1
-        
-        # Projects
-        proj_obtained = self.category_scores.get('projects', 0)
-        proj_max = sum(r.get('gara_weight', 0) for r in self.lot_config.get('reqs', []) if r.get('type') == 'project')
-        if proj_max > 0:
-            ws.cell(row=row, column=2, value='Progetti').border = THIN_BORDER
-            ws.cell(row=row, column=3, value=proj_obtained).number_format = '0.00'
-            ws.cell(row=row, column=3).border = THIN_BORDER
-            ws.cell(row=row, column=4, value=proj_max).number_format = '0.00'
-            ws.cell(row=row, column=4).border = THIN_BORDER
-            ws.cell(row=row, column=5, value=f'=C{row}/D{row}').number_format = '0.0%'
-            ws.cell(row=row, column=5).fill = FORMULA_FILL
-            ws.cell(row=row, column=5).border = THIN_BORDER
-            ws.cell(row=row, column=6, value=f'=D{row}-C{row}').number_format = '0.00'
-            ws.cell(row=row, column=6).fill = FORMULA_FILL
-            ws.cell(row=row, column=6).border = THIN_BORDER
-            row += 1
+        for cat_id, (cat_label, cat_key) in cat_key_map.items():
+            tech_row = self.tech_cat_rows.get(cat_key)
+            if tech_row:
+                ws.cell(row=row, column=2, value=cat_label).border = THIN_BORDER
+                # Ottenuto - reference Tecnico sheet column G (Punteggio Pesato)
+                ws.cell(row=row, column=3, value=f'=Tecnico!G{tech_row}').number_format = '0.00'
+                ws.cell(row=row, column=3).fill = FORMULA_FILL
+                ws.cell(row=row, column=3).border = THIN_BORDER
+                # Max - reference Tecnico sheet column F (Peso Gara)
+                ws.cell(row=row, column=4, value=f'=Tecnico!F{tech_row}').number_format = '0.00'
+                ws.cell(row=row, column=4).fill = FORMULA_FILL
+                ws.cell(row=row, column=4).border = THIN_BORDER
+                # % Copertura
+                ws.cell(row=row, column=5, value=f'=IF(D{row}=0,0,C{row}/D{row})').number_format = '0.0%'
+                ws.cell(row=row, column=5).fill = FORMULA_FILL
+                ws.cell(row=row, column=5).border = THIN_BORDER
+                # Gap
+                ws.cell(row=row, column=6, value=f'=D{row}-C{row}').number_format = '0.00'
+                ws.cell(row=row, column=6).fill = FORMULA_FILL
+                ws.cell(row=row, column=6).border = THIN_BORDER
+                row += 1
         
         # Total row
         gap_end_row = row - 1
@@ -1361,7 +1337,7 @@ class ExcelReportGenerator:
             cell.border = THIN_BORDER
         row += 1
         
-        # Build list of requirements with efficiency
+        # Build list of requirements with efficiency and row references
         req_efficiency = []
         for req in self.lot_config.get('reqs', []):
             req_id = req.get('id', '')
@@ -1370,12 +1346,15 @@ class ExcelReportGenerator:
             max_pts = req.get('gara_weight', 0)
             obtained = self.weighted_scores.get(req_id, 0)
             efficiency = obtained / max_pts if max_pts > 0 else 0
+            tech_row = self.tech_req_rows.get(req_id)  # Row in Tecnico sheet
             req_efficiency.append({
-                'label': req_label[:35],  # Truncate for display
+                'id': req_id,
+                'label': req_label[:35],
                 'type': req_type,
                 'obtained': obtained,
                 'max': max_pts,
-                'efficiency': efficiency
+                'efficiency': efficiency,
+                'tech_row': tech_row
             })
         
         # Sort by efficiency ascending (worst first)
@@ -1384,14 +1363,29 @@ class ExcelReportGenerator:
         for req in req_efficiency[:10]:  # Show top 10 worst
             ws.cell(row=row, column=2, value=req['label']).border = THIN_BORDER
             ws.cell(row=row, column=3, value=req['type']).border = THIN_BORDER
-            ws.cell(row=row, column=4, value=req['obtained']).number_format = '0.00'
+            
+            tech_row = req['tech_row']
+            if tech_row:
+                # Use formulas referencing Tecnico sheet
+                # K = Score Pesato, J = Peso Gara
+                ws.cell(row=row, column=4, value=f"=Tecnico!K{tech_row}").number_format = '0.00'
+                ws.cell(row=row, column=4).fill = FORMULA_FILL
+                ws.cell(row=row, column=5, value=f"=Tecnico!J{tech_row}").number_format = '0.00'
+                ws.cell(row=row, column=5).fill = FORMULA_FILL
+                ws.cell(row=row, column=6, value=f"=IF(Tecnico!J{tech_row}=0,0,Tecnico!K{tech_row}/Tecnico!J{tech_row})")
+                ws.cell(row=row, column=6).fill = FORMULA_FILL
+            else:
+                # Fallback to static values if row not found
+                ws.cell(row=row, column=4, value=req['obtained']).number_format = '0.00'
+                ws.cell(row=row, column=5, value=req['max']).number_format = '0.00'
+                ws.cell(row=row, column=6, value=req['efficiency'])
+            
             ws.cell(row=row, column=4).border = THIN_BORDER
-            ws.cell(row=row, column=5, value=req['max']).number_format = '0.00'
             ws.cell(row=row, column=5).border = THIN_BORDER
-            eff_cell = ws.cell(row=row, column=6, value=req['efficiency'])
+            eff_cell = ws.cell(row=row, column=6)
             eff_cell.number_format = '0.0%'
             eff_cell.border = THIN_BORDER
-            # Color code efficiency
+            # Color code efficiency (using static value for conditional, formula will update display)
             if req['efficiency'] < 0.5:
                 eff_cell.fill = PatternFill(start_color='FFCDD2', end_color='FFCDD2', fill_type='solid')
             elif req['efficiency'] < 0.8:
@@ -1449,30 +1443,33 @@ class ExcelReportGenerator:
             cell.border = THIN_BORDER
         row += 1
         
-        # Show scenarios for competitor discounts 10% to 50%
-        for comp_discount in [10, 20, 30, 40, 50]:
+        # Show scenarios for competitor discounts 5% to 60% in 5% steps
+        # Economic score is capped at MaxEcon when ratio >= 1
+        for comp_discount in range(5, 65, 5):
             ws.cell(row=row, column=2, value=comp_discount / 100).number_format = '0%'
             ws.cell(row=row, column=2).border = THIN_BORDER
             
-            # Competitor total score formula
-            # Score = TechComp + MaxEcon * ((Base - PrezzoComp) / (Base - PrezzoBest))^alpha
-            # Simplified: we calculate based on their discount matching best offer
+            # Competitor total score formula (with cap)
+            # Score = TechComp + MIN(MaxEcon, MaxEcon * (ScontoComp / ScontoBest)^alpha)
             ws.cell(row=row, column=3, 
-                value=f'=$C${competitor_tech_row}+Economico!$C${self.econ_max_econ_row}*((1-B{row})/(1-Economico!$C${self.econ_sconto_best_row}))^Economico!$C${self.econ_alpha_row}'
+                value=f'=$C${competitor_tech_row}+Economico!$C${self.econ_max_econ_row}*MIN(1,(B{row}/Economico!$C${self.econ_sconto_best_row})^Economico!$C${self.econ_alpha_row})'
             ).number_format = '0.00'
             ws.cell(row=row, column=3).fill = FORMULA_FILL
             ws.cell(row=row, column=3).border = THIN_BORDER
             
-            # Required discount to match (simplified approximation)
+            # Required discount to match: solve for our_discount such that our_total = comp_total
+            # our_total = our_tech + MaxEcon * (our_discount/best)^alpha = comp_total
+            # (our_discount/best)^alpha = (comp_total - our_tech) / MaxEcon
+            # our_discount = best * ((comp_total - our_tech) / MaxEcon)^(1/alpha)
             ws.cell(row=row, column=4, 
-                value=f'=1-(1-Economico!$C${self.econ_sconto_best_row})*((C{row}-$C${our_tech_row})/Economico!$C${self.econ_max_econ_row})^(1/Economico!$C${self.econ_alpha_row})'
+                value=f'=IF(C{row}<=$C${our_tech_row},"N/A",Economico!$C${self.econ_sconto_best_row}*((C{row}-$C${our_tech_row})/Economico!$C${self.econ_max_econ_row})^(1/Economico!$C${self.econ_alpha_row}))'
             ).number_format = '0.0%'
             ws.cell(row=row, column=4).fill = FORMULA_FILL
             ws.cell(row=row, column=4).border = THIN_BORDER
             
             # Required discount to beat by 5 points
             ws.cell(row=row, column=5, 
-                value=f'=1-(1-Economico!$C${self.econ_sconto_best_row})*((C{row}+5-$C${our_tech_row})/Economico!$C${self.econ_max_econ_row})^(1/Economico!$C${self.econ_alpha_row})'
+                value=f'=IF(C{row}+5<=$C${our_tech_row},"N/A",Economico!$C${self.econ_sconto_best_row}*((C{row}+5-$C${our_tech_row})/Economico!$C${self.econ_max_econ_row})^(1/Economico!$C${self.econ_alpha_row}))'
             ).number_format = '0.0%'
             ws.cell(row=row, column=5).fill = FORMULA_FILL
             ws.cell(row=row, column=5).border = THIN_BORDER
@@ -1584,8 +1581,8 @@ class ExcelReportGenerator:
             cell.border = THIN_BORDER
         row += 1
         
-        # Scenarios at different discounts
-        for discount in [20, 25, 30, 35, 40, 45, 50]:
+        # Scenarios at different discounts (5% steps)
+        for discount in range(5, 65, 5):
             ws.cell(row=row, column=2, value=discount / 100).number_format = '0%'
             ws.cell(row=row, column=2).border = THIN_BORDER
             
@@ -1598,9 +1595,9 @@ class ExcelReportGenerator:
             ws.cell(row=row, column=4).fill = FORMULA_FILL
             ws.cell(row=row, column=4).border = THIN_BORDER
             
-            # Econ score at this discount
+            # Econ score at this discount (correct formula: MaxEcon * MIN(1, (discount/best)^alpha))
             ws.cell(row=row, column=5, 
-                value=f'=Economico!$C${self.econ_max_econ_row}*MIN(1,((1-B{row})/(1-Economico!$C${self.econ_sconto_best_row}))^Economico!$C${self.econ_alpha_row})'
+                value=f'=Economico!$C${self.econ_max_econ_row}*MIN(1,(B{row}/Economico!$C${self.econ_sconto_best_row})^Economico!$C${self.econ_alpha_row})'
             ).number_format = '0.00'
             ws.cell(row=row, column=5).fill = FORMULA_FILL
             ws.cell(row=row, column=5).border = THIN_BORDER
