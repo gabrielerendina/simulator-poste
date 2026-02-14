@@ -53,12 +53,6 @@ export default function MarginSimulator({
     const marginPct = revenue > 0 ? (margin / revenue) * 100 : 0;
 
     // Sconto per raggiungere margine target (include risk contingency)
-    // margin_target_effective = target + risk_contingency
-    // margin_target = (rev - cost) / rev
-    // => rev = cost / (1 - margin_target)
-    // => base * (1-d) * q = cost / (1 - target)
-    // => (1-d) = cost / (base * q * (1 - target))
-    // => d = 1 - cost / (base * q * (1 - target))
     const targetFraction = (targetMargin + riskContingency) / 100;
     const q = isRti ? quotaLutech : 1;
     const denominator = baseAmount * q * (1 - targetFraction);
@@ -67,8 +61,6 @@ export default function MarginSimulator({
       : 0;
 
     // Break-even: margine = 0 => revenue = cost
-    // => base * (1-d) * q = cost
-    // => d = 1 - cost / (base * q)
     const breakEvenDenom = baseAmount * q;
     const breakEvenDiscount = breakEvenDenom > 0
       ? Math.max(0, Math.min(100, (1 - totalCost / breakEvenDenom) * 100))
@@ -109,11 +101,6 @@ export default function MarginSimulator({
 
   const marginStatus = getMarginStatus();
 
-  const colorClasses = {
-    amber: 'text-amber-700 bg-amber-50 border-amber-200',
-    green: 'text-green-700 bg-green-50 border-green-200'
-  };
-
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
@@ -141,159 +128,188 @@ export default function MarginSimulator({
         </div>
       </div>
 
-      <div className="p-5 space-y-4">
-        {/* Slider Sconto */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-              <Percent className="w-4 h-4 text-slate-400" />
-              Sconto Offerto
-            </label>
-            <div className="flex items-center gap-2">
+      <div className="p-5">
+        {/* Layout a 2 colonne: sinistra sconto, destra cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+          {/* Colonna sinistra: Slider Sconto */}
+          <div className="lg:col-span-1 space-y-4">
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                <Percent className="w-4 h-4 text-slate-400" />
+                Sconto Offerto
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={localDiscount}
+                  onChange={(e) => handleDiscountChange(e.target.value)}
+                  disabled={disabled}
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  className="w-20 px-2 py-1.5 text-right text-lg font-bold border border-slate-200 rounded-lg
+                             focus:border-blue-500 focus:outline-none
+                             disabled:bg-slate-50 disabled:cursor-not-allowed"
+                />
+                <span className="text-lg font-semibold text-slate-500">%</span>
+              </div>
+
               <input
-                type="number"
+                type="range"
+                min="0"
+                max="50"
+                step="0.5"
                 value={localDiscount}
                 onChange={(e) => handleDiscountChange(e.target.value)}
                 disabled={disabled}
-                min="0"
-                max="100"
-                step="0.5"
-                className="w-20 px-2 py-1 text-right font-semibold border border-slate-200 rounded-lg
-                           focus:border-blue-500 focus:outline-none
-                           disabled:bg-slate-50 disabled:cursor-not-allowed"
+                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer
+                           accent-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               />
-              <span className="text-sm text-slate-500">%</span>
-            </div>
-          </div>
 
-          <input
-            type="range"
-            min="0"
-            max="50"
-            step="0.5"
-            value={localDiscount}
-            onChange={(e) => handleDiscountChange(e.target.value)}
-            disabled={disabled}
-            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer
-                       accent-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          />
-
-          <div className="flex justify-between text-xs text-slate-400">
-            <span>0%</span>
-            <span className="text-amber-500 font-medium">
-              Break-even: {calculations.breakEvenDiscount}%
-            </span>
-            <span>50%</span>
-          </div>
-        </div>
-
-        {/* Cards Grid: Margine, Target, Info RTI */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Card Margine Corrente */}
-          <div className={`p-4 rounded-xl border-2 ${
-            marginStatus.color === 'green'
-              ? 'border-green-500 bg-green-50'
-              : 'border-amber-500 bg-amber-50'
-          }`}>
-            <div className="flex items-center gap-2 mb-2">
-              <marginStatus.icon className={`w-5 h-5 ${
-                marginStatus.color === 'green' ? 'text-green-600' : 'text-amber-600'
-              }`} />
-              <span className="text-sm font-semibold text-slate-700">Margine Corrente</span>
-            </div>
-            <div className={`text-3xl font-bold mb-3 ${
-              marginStatus.color === 'green' ? 'text-green-700' : 'text-amber-700'
-            }`}>
-              {calculations.marginPct}%
-            </div>
-            <div className="space-y-1.5 pt-2 border-t border-current/20">
-              <div className="flex justify-between text-xs">
-                <span className="opacity-70">Revenue</span>
-                <span className="font-semibold">{formatCurrency(calculations.revenue)}</span>
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>0%</span>
+                <span>50%</span>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="opacity-70">Costo</span>
-                <span className="font-semibold">{formatCurrency(totalCost)}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="opacity-70">Margine €</span>
-                <span className="font-semibold">{formatCurrency(calculations.margin)}</span>
+
+              <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="text-xs text-amber-700 font-medium">Break-even</div>
+                <div className="text-sm font-bold text-amber-800">{calculations.breakEvenDiscount}%</div>
               </div>
             </div>
           </div>
 
-          {/* Card Margine Target */}
-          <div className="p-4 rounded-xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50">
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="w-5 h-5 text-blue-600" />
-              <span className="text-sm font-semibold text-slate-700">Margine Target</span>
-            </div>
-            <div className="flex items-center gap-2 mb-2">
-              <input
-                type="number"
-                value={targetMargin}
-                onChange={(e) => onTargetMarginChange?.(parseFloat(e.target.value) || 0)}
-                disabled={disabled}
-                min="0"
-                max="50"
-                step="1"
-                className="w-16 px-2 py-1 text-center text-xl font-bold
-                           border border-blue-200 rounded-lg bg-white
-                           focus:border-blue-500 focus:outline-none"
-              />
-              <span className="text-xl font-bold text-blue-700">%</span>
-            </div>
-            <div className="mb-2 p-2 bg-blue-100/50 rounded text-xs text-blue-700">
-              + Risk: <strong>{riskContingency}%</strong> = <strong>{(targetMargin + riskContingency).toFixed(1)}%</strong>
-            </div>
-            <div className="pt-2 border-t border-blue-200">
-              <div className="text-xs text-slate-600 mb-1">Sconto suggerito</div>
-              <div className="flex items-center justify-between">
-                <div className="text-xl font-bold text-blue-700">
-                  {calculations.suggestedDiscount}%
+          {/* Colonna destra: 3 Cards affiancate */}
+          <div className="lg:col-span-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Card Margine Corrente */}
+              <div className={`p-5 rounded-xl border-2 ${
+                marginStatus.color === 'green'
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-amber-500 bg-amber-50'
+              }`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <marginStatus.icon className={`w-5 h-5 ${
+                    marginStatus.color === 'green' ? 'text-green-600' : 'text-amber-600'
+                  }`} />
+                  <span className="text-sm font-semibold text-slate-700">Margine Corrente</span>
                 </div>
-                <button
-                  onClick={applyTargetDiscount}
-                  disabled={disabled}
-                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium
-                             hover:bg-blue-700 transition-colors flex items-center gap-1
-                             disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Applica
-                  <ArrowRight className="w-3 h-3" />
-                </button>
+                <div className={`text-4xl font-bold mb-4 ${
+                  marginStatus.color === 'green' ? 'text-green-700' : 'text-amber-700'
+                }`}>
+                  {calculations.marginPct}%
+                </div>
+                <div className="space-y-2 pt-3 border-t border-current/20">
+                  <div className="flex justify-between text-sm">
+                    <span className="opacity-70">Revenue</span>
+                    <span className="font-semibold">{formatCurrency(calculations.revenue)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="opacity-70">Costo</span>
+                    <span className="font-semibold">{formatCurrency(totalCost)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="opacity-70">Margine</span>
+                    <span className="font-bold">{formatCurrency(calculations.margin)}</span>
+                  </div>
+                </div>
               </div>
+
+              {/* Card Margine Target */}
+              <div className="p-5 rounded-xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50">
+                <div className="flex items-center gap-2 mb-3">
+                  <Target className="w-5 h-5 text-blue-600" />
+                  <span className="text-sm font-semibold text-slate-700">Margine Target</span>
+                </div>
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    type="number"
+                    value={targetMargin}
+                    onChange={(e) => onTargetMarginChange?.(parseFloat(e.target.value) || 0)}
+                    disabled={disabled}
+                    min="0"
+                    max="50"
+                    step="1"
+                    className="w-16 px-2 py-1 text-center text-2xl font-bold
+                               border border-blue-200 rounded-lg bg-white
+                               focus:border-blue-500 focus:outline-none"
+                  />
+                  <span className="text-2xl font-bold text-blue-700">%</span>
+                </div>
+                <div className="mb-3 p-2.5 bg-blue-100/50 rounded-lg text-sm text-blue-700">
+                  + Risk: <strong>{riskContingency}%</strong> = Soglia <strong>{(targetMargin + riskContingency).toFixed(1)}%</strong>
+                </div>
+                <div className="pt-3 border-t border-blue-200">
+                  <div className="text-sm text-slate-600 mb-2">Sconto suggerito per target</div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-2xl font-bold text-blue-700">
+                      {calculations.suggestedDiscount}%
+                    </div>
+                    <button
+                      onClick={applyTargetDiscount}
+                      disabled={disabled}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium
+                                 hover:bg-blue-700 transition-colors flex items-center gap-1.5
+                                 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Applica
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Info RTI o Gara Singola */}
+              {isRti ? (
+                <div className="p-5 rounded-xl border-2 border-indigo-300 bg-indigo-50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calculator className="w-5 h-5 text-indigo-600" />
+                    <span className="text-sm font-semibold text-slate-700">Configurazione RTI</span>
+                  </div>
+                  <div className="text-4xl font-bold text-indigo-700 mb-3">
+                    {(quotaLutech * 100).toFixed(0)}%
+                  </div>
+                  <div className="text-sm text-indigo-600 mb-3">
+                    Quota Lutech sul totale gara
+                  </div>
+                  <div className="pt-3 border-t border-indigo-200 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-indigo-600">Base gara</span>
+                      <span className="font-semibold text-indigo-700">{formatCurrency(baseAmount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-indigo-600">Quota Lutech</span>
+                      <span className="font-semibold text-indigo-700">{formatCurrency(baseAmount * quotaLutech)}</span>
+                    </div>
+                    <div className="text-xs text-indigo-500 pt-1">
+                      I calcoli sono applicati sulla quota Lutech
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-5 rounded-xl border-2 border-slate-200 bg-slate-50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TrendingUp className="w-5 h-5 text-slate-400" />
+                    <span className="text-sm font-semibold text-slate-500">Gara Singola</span>
+                  </div>
+                  <div className="text-4xl font-bold text-slate-400 mb-3">100%</div>
+                  <div className="text-sm text-slate-500 mb-3">
+                    Calcolo su importo pieno
+                  </div>
+                  <div className="pt-3 border-t border-slate-200 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Base gara</span>
+                      <span className="font-semibold text-slate-700">{formatCurrency(baseAmount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Costo totale</span>
+                      <span className="font-semibold text-slate-700">{formatCurrency(totalCost)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Card Info RTI o Placeholder */}
-          {isRti ? (
-            <div className="p-4 rounded-xl border-2 border-indigo-300 bg-indigo-50">
-              <div className="flex items-center gap-2 mb-2">
-                <Calculator className="w-5 h-5 text-indigo-600" />
-                <span className="text-sm font-semibold text-slate-700">Configurazione RTI</span>
-              </div>
-              <div className="text-3xl font-bold text-indigo-700 mb-2">
-                {(quotaLutech * 100).toFixed(0)}%
-              </div>
-              <div className="text-xs text-indigo-600">
-                Quota Lutech sul totale gara
-              </div>
-              <div className="mt-3 pt-3 border-t border-indigo-200 text-xs text-indigo-700">
-                I calcoli sono applicati sulla quota Lutech
-              </div>
-            </div>
-          ) : (
-            <div className="p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-5 h-5 text-slate-400" />
-                <span className="text-sm font-semibold text-slate-500">Gara Singola</span>
-              </div>
-              <div className="text-xs text-slate-500 mt-2">
-                Calcolo su 100% importo base
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

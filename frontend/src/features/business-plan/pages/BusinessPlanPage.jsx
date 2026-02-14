@@ -581,20 +581,21 @@ export default function BusinessPlanPage() {
               showTowDetail={false}
             />
 
-            {/* STEP 7: Margin Simulator */}
-            <MarginSimulator
-              baseAmount={lotData.base_amount || 0}
-              totalCost={calcResult?.total || 0}
-              isRti={isRti}
-              quotaLutech={quotaLutech}
-              discount={discount}
-              onDiscountChange={setDiscount}
-              targetMargin={targetMargin}
-              onTargetMarginChange={setTargetMargin}
-              riskContingency={localBP.risk_contingency_pct || 5}
-            />
           </div>
         </div>
+
+        {/* STEP 7: Margin Simulator - Full Width */}
+        <MarginSimulator
+          baseAmount={lotData.base_amount || 0}
+          totalCost={calcResult?.total || 0}
+          isRti={isRti}
+          quotaLutech={quotaLutech}
+          discount={discount}
+          onDiscountChange={setDiscount}
+          targetMargin={targetMargin}
+          onTargetMarginChange={setTargetMargin}
+          riskContingency={localBP.risk_contingency_pct || 5}
+        />
 
         {/* Scenarios - Full Width */}
         <ScenarioCards
