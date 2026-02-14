@@ -2,8 +2,9 @@
 SQLAlchemy database models for Poste Tender Simulator
 """
 
-from sqlalchemy import Column, String, Float, JSON, Text, Boolean
+from sqlalchemy import Column, String, Float, JSON, Text, Boolean, Integer, DateTime, ForeignKey
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
+from datetime import datetime
 from database import Base
 
 
@@ -79,3 +80,100 @@ class OCRSettingsModel(Base):
     key = Column(String(100), primary_key=True, index=True)
     value = Column(Text, nullable=True)
     description = Column(String(500), nullable=True)
+
+
+# ============================================================================
+# Business Plan Models
+# ============================================================================
+
+class PracticeModel(Base):
+    """
+    Practice interna Lutech.
+    Ogni TOW viene assegnato a una Practice che ha il proprio catalogo profili/tariffe.
+    """
+
+    __tablename__ = "practices"
+
+    id = Column(String(50), primary_key=True, index=True)  # e.g. "data_ai"
+    label = Column(String(255), nullable=False)  # e.g. "Data & AI"
+    profiles = Column(SQLiteJSON, default=list)  # [{id, label, seniority, daily_rate}]
+
+
+class ProfileCatalogModel(Base):
+    """
+    Catalogo profili globale (cross-practice).
+    Ogni profilo ha una tariffa giornaliera e appartiene a una Practice.
+    """
+
+    __tablename__ = "profile_catalog"
+
+    id = Column(String(50), primary_key=True, index=True)
+    label = Column(String(255), nullable=False)
+    seniority = Column(String(20), default="mid")  # jr/mid/sr/expert
+    # Il daily_rate definisce il costo standard giornaliero della risorsa interna
+    daily_rate = Column(Float, default=0.0)
+    practice_id = Column(String(50), ForeignKey("practices.id"), nullable=True)
+
+
+class BusinessPlanModel(Base):
+    """
+    Business Plan per lotto.
+    Contiene tutti i parametri di configurazione e i risultati calcolati.
+    """
+
+    __tablename__ = "business_plans"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    lot_key = Column(String(255), ForeignKey("lot_configs.name"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Parametri generali
+    duration_months = Column(Integer, default=36)
+    governance_pct = Column(Float, default=0.10)
+    risk_contingency_pct = Column(Float, default=0.05)
+
+    # Da capitolato Poste (JSON)
+    # [{profile_id, label, fte, days_year, tow_allocation: {tow_id: pct}}]
+    team_composition = Column(SQLiteJSON, default=list)
+
+    # [{tow_id, label, type, weight_pct, activities, deliverables}]
+    tows = Column(SQLiteJSON, default=list)
+
+    # Rettifica volumi
+    # {"global": 0.90, "by_tow": {"TOW_02": 0.85}, "by_profile": {"PM": 0.50}}
+    volume_adjustments = Column(SQLiteJSON, default=dict)
+
+    # Fattore riuso
+    reuse_factor = Column(Float, default=0.0)
+
+    # Assegnazione TOW → Practice
+    # {"TOW_01": "practice_data", "TOW_02": "practice_dev"}
+    tow_assignments = Column(SQLiteJSON, default=dict)
+
+    # Mapping profili Poste → Lutech (supporta ottimizzazione temporale)
+    # Esempio:
+    # {
+    #   "Senior Developer": [
+    #     {
+    #       "period": "Anno 1",
+    #       "mix": [{"lutech_profile": "dev_sr", "pct": 0.8}, {"lutech_profile": "dev_mid", "pct": 0.2}]
+    #     },
+    #     {
+    #       "period": "Anno 2+",
+    #       "mix": [{"lutech_profile": "dev_sr", "pct": 0.6}, {"lutech_profile": "dev_mid", "pct": 0.4}]
+    #     }
+    #   ]
+    # }
+    profile_mappings = Column(SQLiteJSON, default=dict)
+
+    # Subappalto
+    # {"quota_pct": 0.15, "partner": "PartnerX", "tows": ["TOW_03"]}
+    subcontract_config = Column(SQLiteJSON, default=dict)
+
+    # Output calcolati
+    tow_costs = Column(SQLiteJSON, default=dict)  # {tow_id: cost}
+    tow_prices = Column(SQLiteJSON, default=dict)  # {tow_id: price}
+    total_cost = Column(Float, default=0.0)
+    total_price = Column(Float, default=0.0)
+    margin_pct = Column(Float, default=0.0)

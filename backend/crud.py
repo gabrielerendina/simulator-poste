@@ -480,3 +480,185 @@ def seed_ocr_settings(db: Session) -> None:
             db.add(db_setting)
     
     db.commit()
+
+
+# ============================================================================
+# Business Plan CRUD Operations
+# ============================================================================
+
+def get_business_plan(db: Session, lot_key: str) -> Optional[models.BusinessPlanModel]:
+    """Retrieve a business plan by lot key"""
+    return db.query(models.BusinessPlanModel).filter(
+        models.BusinessPlanModel.lot_key == lot_key
+    ).first()
+
+
+def create_business_plan(
+    db: Session, lot_key: str, data: schemas.BusinessPlanCreate
+) -> models.BusinessPlanModel:
+    """Create a new business plan for a lot"""
+    # Convert profile_mappings from Pydantic models to dicts
+    profile_mappings_dict = {}
+    for profile_id, periods in data.profile_mappings.items():
+        profile_mappings_dict[profile_id] = [p.model_dump() for p in periods]
+
+    db_bp = models.BusinessPlanModel(
+        lot_key=lot_key,
+        duration_months=data.duration_months,
+        governance_pct=data.governance_pct,
+        risk_contingency_pct=data.risk_contingency_pct,
+        team_composition=data.team_composition,
+        tows=data.tows,
+        volume_adjustments=data.volume_adjustments,
+        reuse_factor=data.reuse_factor,
+        tow_assignments=data.tow_assignments,
+        profile_mappings=profile_mappings_dict,
+        subcontract_config=data.subcontract_config,
+    )
+    db.add(db_bp)
+    db.commit()
+    db.refresh(db_bp)
+    return db_bp
+
+
+def update_business_plan(
+    db: Session, lot_key: str, data: schemas.BusinessPlanCreate
+) -> Optional[models.BusinessPlanModel]:
+    """Update an existing business plan"""
+    db_bp = get_business_plan(db, lot_key)
+    if not db_bp:
+        return None
+
+    # Convert profile_mappings from Pydantic models to dicts
+    profile_mappings_dict = {}
+    for profile_id, periods in data.profile_mappings.items():
+        profile_mappings_dict[profile_id] = [p.model_dump() for p in periods]
+
+    db_bp.duration_months = data.duration_months
+    db_bp.governance_pct = data.governance_pct
+    db_bp.risk_contingency_pct = data.risk_contingency_pct
+    db_bp.team_composition = data.team_composition
+    db_bp.tows = data.tows
+    db_bp.volume_adjustments = data.volume_adjustments
+    db_bp.reuse_factor = data.reuse_factor
+    db_bp.tow_assignments = data.tow_assignments
+    db_bp.profile_mappings = profile_mappings_dict
+    db_bp.subcontract_config = data.subcontract_config
+
+    db.commit()
+    db.refresh(db_bp)
+    return db_bp
+
+
+def delete_business_plan(db: Session, lot_key: str) -> bool:
+    """Delete a business plan"""
+    db_bp = get_business_plan(db, lot_key)
+    if db_bp:
+        db.delete(db_bp)
+        db.commit()
+        return True
+    return False
+
+
+# ============================================================================
+# Practice CRUD Operations
+# ============================================================================
+
+def get_practices(db: Session) -> List[models.PracticeModel]:
+    """Retrieve all practices"""
+    return db.query(models.PracticeModel).order_by(models.PracticeModel.label).all()
+
+
+def get_practice(db: Session, practice_id: str) -> Optional[models.PracticeModel]:
+    """Retrieve a practice by ID"""
+    return db.query(models.PracticeModel).filter(
+        models.PracticeModel.id == practice_id
+    ).first()
+
+
+def create_practice(
+    db: Session, data: schemas.PracticeCreate
+) -> models.PracticeModel:
+    """Create a new practice"""
+    db_practice = models.PracticeModel(
+        id=data.id,
+        label=data.label,
+        profiles=[p.model_dump() if hasattr(p, 'model_dump') else p for p in (data.profiles or [])],
+    )
+    db.add(db_practice)
+    db.commit()
+    db.refresh(db_practice)
+    return db_practice
+
+
+def update_practice(
+    db: Session, practice_id: str, data: schemas.PracticeCreate
+) -> Optional[models.PracticeModel]:
+    """Update an existing practice"""
+    db_practice = get_practice(db, practice_id)
+    if not db_practice:
+        return None
+    db_practice.label = data.label
+    db_practice.profiles = [p.model_dump() if hasattr(p, 'model_dump') else p for p in (data.profiles or [])]
+    db.commit()
+    db.refresh(db_practice)
+    return db_practice
+
+
+def delete_practice(db: Session, practice_id: str) -> bool:
+    """Delete a practice"""
+    db_practice = get_practice(db, practice_id)
+    if db_practice:
+        db.delete(db_practice)
+        db.commit()
+        return True
+    return False
+
+
+def get_practice_profiles(db: Session, practice_id: str) -> List[models.ProfileCatalogModel]:
+    """Get all profiles for a practice"""
+    return db.query(models.ProfileCatalogModel).filter(
+        models.ProfileCatalogModel.practice_id == practice_id
+    ).all()
+
+
+def create_profile(
+    db: Session, data: schemas.ProfileCatalogCreate
+) -> models.ProfileCatalogModel:
+    """Create a profile in the catalog"""
+    db_profile = models.ProfileCatalogModel(
+        id=data.id,
+        label=data.label,
+        seniority=data.seniority,
+        daily_rate=data.daily_rate,
+        practice_id=data.practice_id,
+    )
+    db.add(db_profile)
+    db.commit()
+    db.refresh(db_profile)
+    return db_profile
+
+
+def seed_practices(db: Session) -> None:
+    """Seed default practices if none exist"""
+    existing = db.query(models.PracticeModel).count()
+    if existing > 0:
+        return
+
+    default_practices = [
+        {"id": "data_ai", "label": "Data & AI", "profiles": []},
+        {"id": "development", "label": "Development", "profiles": []},
+        {"id": "qa_services", "label": "QA Services", "profiles": []},
+        {"id": "cloud_infra", "label": "Cloud & Infrastructure", "profiles": []},
+        {"id": "consulting", "label": "Consulting & PMO", "profiles": []},
+    ]
+
+    for p in default_practices:
+        db_practice = models.PracticeModel(
+            id=p["id"],
+            label=p["label"],
+            profiles=p["profiles"],
+        )
+        db.add(db_practice)
+
+    db.commit()

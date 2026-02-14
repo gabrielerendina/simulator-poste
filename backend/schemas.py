@@ -4,6 +4,7 @@ Pydantic schemas for request/response validation
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import List, Dict, Any, Optional, Union
+from datetime import datetime
 
 
 class CompanyCert(BaseModel):
@@ -244,3 +245,153 @@ class CertVerificationConfig(BaseModel):
     """Full certification verification configuration"""
     vendors: List[VendorConfig] = Field(default_factory=list)
     settings: Dict[str, Any] = Field(default_factory=dict)
+
+
+# ============================================================================
+# Business Plan Schemas
+# ============================================================================
+
+class LutechProfileMix(BaseModel):
+    """Mappatura di un singolo profilo Lutech con la sua percentuale nel mix."""
+    lutech_profile: str = Field(..., description="ID del profilo Lutech")
+    pct: float = Field(..., ge=0.0, le=100.0, description="Percentuale nel mix (0-100)")
+
+
+class TimeVaryingMix(BaseModel):
+    """Definisce un mix di profili Lutech per un dato periodo di tempo."""
+    month_start: int = Field(default=1, description="Mese iniziale del periodo (1-based)")
+    month_end: int = Field(default=36, description="Mese finale del periodo (1-based)")
+    mix: List[LutechProfileMix] = Field(..., description="Lista dei profili Lutech nel mix")
+
+
+class PracticeProfile(BaseModel):
+    """Profilo all'interno di una Practice"""
+    id: str
+    label: str
+    seniority: Optional[str] = None  # Opzionale per retrocompatibilità
+    daily_rate: float = 0.0
+
+
+class PracticeCreate(BaseModel):
+    """Schema per creare una Practice"""
+    id: str = Field(..., description="Identificativo univoco (es. 'data_ai')")
+    label: str = Field(..., description="Nome visualizzato (es. 'Data & AI')")
+    profiles: List[PracticeProfile] = Field(default_factory=list)
+
+
+class PracticeResponse(BaseModel):
+    """Schema di risposta per Practice"""
+    id: str
+    label: str
+    profiles: List[Dict[str, Any]] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProfileCatalogCreate(BaseModel):
+    """Schema per creare un profilo nel catalogo"""
+    id: str
+    label: str
+    seniority: Optional[str] = None  # Opzionale
+    daily_rate: float = 0.0
+    practice_id: Optional[str] = None
+
+
+class ProfileCatalogResponse(BaseModel):
+    """Schema di risposta per profilo catalogo"""
+    id: str
+    label: str
+    seniority: Optional[str] = None
+    daily_rate: float
+    practice_id: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class VolumeAdjustmentPeriod(BaseModel):
+    """Rettifiche volumi per un periodo specifico"""
+    month_start: int = Field(default=1, description="Mese iniziale (1-based)")
+    month_end: int = Field(default=36, description="Mese finale (1-based)")
+    by_tow: Dict[str, float] = Field(default_factory=dict)
+    by_profile: Dict[str, float] = Field(default_factory=dict)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class VolumeAdjustments(BaseModel):
+    """Rettifiche volumi - supporta sia formato legacy che nuovo formato con periodi"""
+    # Legacy format (per retrocompatibilità)
+    by_tow: Optional[Dict[str, float]] = None
+    by_profile: Optional[Dict[str, float]] = None
+
+    # New format con periodi
+    periods: Optional[List[VolumeAdjustmentPeriod]] = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class SubcontractConfig(BaseModel):
+    """Configurazione subappalto"""
+    quota_pct: float = Field(default=0.0, ge=0.0, le=0.20)
+    partner: Optional[str] = None
+    tows: List[str] = Field(default_factory=list)
+
+
+class BusinessPlanCreate(BaseModel):
+    """Schema per creare/aggiornare un Business Plan"""
+    duration_months: int = 36
+    governance_pct: float = Field(default=0.10, ge=0.0, le=1.0)  # Decimali 0-1 (frontend invia /100)
+    risk_contingency_pct: float = Field(default=0.05, ge=0.0, le=1.0)  # Decimali 0-1 (frontend invia /100)
+    team_composition: List[Dict[str, Any]] = Field(default_factory=list)
+    tows: List[Dict[str, Any]] = Field(default_factory=list)
+    volume_adjustments: Dict[str, Any] = Field(default_factory=dict)
+    reuse_factor: float = Field(default=0.0, ge=0.0, le=1.0)  # Decimali 0-1 (frontend invia /100)
+    tow_assignments: Dict[str, str] = Field(default_factory=dict)
+    profile_mappings: Dict[str, List[TimeVaryingMix]] = Field(default_factory=dict)
+    subcontract_config: Dict[str, Any] = Field(default_factory=dict)
+
+
+class BusinessPlanResponse(BaseModel):
+    """Schema di risposta per Business Plan"""
+    id: int
+    lot_key: str
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    duration_months: int = 36
+    governance_pct: float = 0.10
+    risk_contingency_pct: float = 0.05
+    team_composition: List[Dict[str, Any]] = Field(default_factory=list)
+    tows: List[Dict[str, Any]] = Field(default_factory=list)
+    volume_adjustments: Dict[str, Any] = Field(default_factory=dict)
+    reuse_factor: float = 0.0
+    tow_assignments: Dict[str, str] = Field(default_factory=dict)
+    profile_mappings: Dict[str, List[TimeVaryingMix]] = Field(default_factory=dict)
+    subcontract_config: Dict[str, Any] = Field(default_factory=dict)
+    tow_costs: Dict[str, float] = Field(default_factory=dict)
+    tow_prices: Dict[str, float] = Field(default_factory=dict)
+    total_cost: float = 0.0
+    total_price: float = 0.0
+    margin_pct: float = 0.0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BusinessPlanCalculateRequest(BaseModel):
+    """Richiesta di calcolo costi/margine per un BP"""
+    discount_pct: float = Field(default=0.0, ge=0.0, le=100.0)
+    is_rti: bool = False
+    quota_lutech: float = Field(default=1.0, ge=0.0, le=1.0)
+
+
+class BusinessPlanCalculateResponse(BaseModel):
+    """Risposta calcolo Business Plan"""
+    team_cost: float = 0.0
+    governance_cost: float = 0.0
+    risk_cost: float = 0.0
+    subcontract_cost: float = 0.0
+    total_cost: float = 0.0
+    total_revenue: float = 0.0
+    margin: float = 0.0
+    margin_pct: float = 0.0
+    tow_breakdown: Dict[str, Any] = Field(default_factory=dict)
+    savings_pct: float = 0.0

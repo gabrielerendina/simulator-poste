@@ -194,6 +194,136 @@ class TestConfigEndpoint:
             assert "points" in lotto1["company_certs"][0]
 
 
+# ============================================================================
+# BUSINESS PLAN SERVICE TESTS
+# ============================================================================
+
+from services.business_plan_service import BusinessPlanService
+
+# Test data for Business Plan calculations
+TEAM_COMPOSITION = [{"profile_id": "Senior Developer", "label": "Senior Developer", "fte": 1.0}]
+PROFILE_RATES = {"dev_sr": 500, "dev_mid": 400, "dev_jr": 300}
+VOLUME_ADJUSTMENTS = {}
+REUSE_FACTOR = 0.0
+DAYS_PER_FTE = 220
+
+class TestBusinessPlanService:
+    """Test the business plan cost calculation logic"""
+
+    def test_simple_mapping_no_time_variation(self):
+        """Test cost with a simple 1-to-1 profile mapping, no time variance."""
+        mappings = {
+            "Senior Developer": [{"mix": [{"lutech_profile": "dev_sr", "pct": 1.0}]}]
+        }
+        
+        result = BusinessPlanService.calculate_team_cost(
+            team_composition=TEAM_COMPOSITION,
+            volume_adjustments=VOLUME_ADJUSTMENTS,
+            reuse_factor=REUSE_FACTOR,
+            profile_mappings=mappings,
+            profile_rates=PROFILE_RATES,
+            duration_months=12
+        )
+        
+        expected_cost = 1.0 * DAYS_PER_FTE * 500  # 1 FTE * 220 days * €500/day
+        assert result["total_cost"] == expected_cost
+        assert result["total_fte_adjusted"] == 1.0
+
+    def test_mixed_mapping_no_time_variation(self):
+        """Test cost with a 50/50 mixed mapping, no time variance."""
+        mappings = {
+            "Senior Developer": [{
+                "mix": [
+                    {"lutech_profile": "dev_sr", "pct": 0.5},
+                    {"lutech_profile": "dev_mid", "pct": 0.5}
+                ]
+            }]
+        }
+        
+        result = BusinessPlanService.calculate_team_cost(
+            team_composition=TEAM_COMPOSITION,
+            volume_adjustments=VOLUME_ADJUSTMENTS,
+            reuse_factor=REUSE_FACTOR,
+            profile_mappings=mappings,
+            profile_rates=PROFILE_RATES,
+            duration_months=12
+        )
+        
+        avg_rate = (500 * 0.5) + (400 * 0.5)  # €450/day
+        expected_cost = 1.0 * DAYS_PER_FTE * avg_rate
+        assert result["total_cost"] == expected_cost
+
+    def test_time_varying_mapping(self):
+        """Test cost with a mix that changes from Year 1 to Year 2."""
+        mappings = {
+            "Senior Developer": [
+                {"period": "Anno 1", "mix": [{"lutech_profile": "dev_sr", "pct": 1.0}]},
+                {"period": "Anno 2", "mix": [{"lutech_profile": "dev_mid", "pct": 1.0}]}
+            ]
+        }
+        
+        result = BusinessPlanService.calculate_team_cost(
+            team_composition=TEAM_COMPOSITION,
+            volume_adjustments=VOLUME_ADJUSTMENTS,
+            reuse_factor=REUSE_FACTOR,
+            profile_mappings=mappings,
+            profile_rates=PROFILE_RATES,
+            duration_months=24
+        )
+        
+        cost_y1 = 1.0 * DAYS_PER_FTE * 500  # Year 1: Senior
+        cost_y2 = 1.0 * DAYS_PER_FTE * 400  # Year 2: Mid
+        expected_cost = cost_y1 + cost_y2
+        
+        assert result["total_cost"] == expected_cost
+        assert result["total_days"] == DAYS_PER_FTE * 2
+
+    def test_time_varying_mapping_with_plus_notation(self):
+        """Test cost with 'Anno 2+' notation for subsequent years."""
+        mappings = {
+            "Senior Developer": [
+                {"period": "Anno 1", "mix": [{"lutech_profile": "dev_sr", "pct": 1.0}]},
+                {"period": "Anno 2+", "mix": [
+                    {"lutech_profile": "dev_mid", "pct": 0.5},
+                    {"lutech_profile": "dev_jr", "pct": 0.5},
+                ]}
+            ]
+        }
+        
+        result = BusinessPlanService.calculate_team_cost(
+            team_composition=TEAM_COMPOSITION,
+            volume_adjustments=VOLUME_ADJUSTMENTS,
+            reuse_factor=REUSE_FACTOR,
+            profile_mappings=mappings,
+            profile_rates=PROFILE_RATES,
+            duration_months=36
+        )
+        
+        cost_y1 = 1.0 * DAYS_PER_FTE * 500 # Year 1: Senior rate
+        
+        avg_rate_y2_onward = (400 * 0.5) + (300 * 0.5) # €350/day
+        cost_y2 = 1.0 * DAYS_PER_FTE * avg_rate_y2_onward
+        cost_y3 = 1.0 * DAYS_PER_FTE * avg_rate_y2_onward
+        
+        expected_cost = cost_y1 + cost_y2 + cost_y3
+        
+        assert result["total_cost"] == expected_cost
+        assert result["total_days"] == DAYS_PER_FTE * 3
+
+    def test_no_mapping_fallback(self):
+        """Test fallback behavior when a profile is not in the mappings dict."""
+        result = BusinessPlanService.calculate_team_cost(
+            team_composition=TEAM_COMPOSITION,
+            volume_adjustments=VOLUME_ADJUSTMENTS,
+            reuse_factor=REUSE_FACTOR,
+            profile_mappings={},  # Empty mappings
+            profile_rates=PROFILE_RATES,
+            duration_months=12
+        )
+        
+        # Falls back to a default rate (currently 350 in the service)
+        expected_cost = 1.0 * DAYS_PER_FTE * 350
+        assert result["total_cost"] == expected_cost
 
 
 if __name__ == "__main__":

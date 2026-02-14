@@ -7,7 +7,9 @@ import Dashboard from './components/Dashboard';
 import ConfigPage from './components/ConfigPage';
 import MasterDataConfig from './components/MasterDataConfig';
 import CertVerificationPage from './components/CertVerificationPage';
-import { Settings, Menu, X, Save } from 'lucide-react';
+import BusinessPlanPage from './features/business-plan/pages/BusinessPlanPage';
+import { BusinessPlanProvider } from './features/business-plan/context/BusinessPlanContext';
+import { Settings, Menu, X, Save, Briefcase } from 'lucide-react';
 import { logger } from './utils/logger';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -40,7 +42,7 @@ function AppContent() {
     setSimulationData
   } = useSimulation();
 
-  const [view, setView] = useState('dashboard'); // dashboard, config, master, certs
+  const [view, setView] = useState('dashboard'); // dashboard, config, master, certs, businessPlan
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar state
   const lastLoadedLot = useRef(null); // Track last loaded lot to prevent loops
@@ -321,7 +323,7 @@ function AppContent() {
                 <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full shadow-sm">
                   <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    {view === 'dashboard' ? t('common.home') : view === 'config' ? t('common.gara_lotto') : view === 'certs' ? 'Certificazioni' : t('common.master_data')}
+                    {view === 'dashboard' ? t('common.home') : view === 'config' ? t('common.gara_lotto') : view === 'certs' ? 'Certificazioni' : view === 'businessPlan' ? t('business_plan.title') : t('common.master_data')}
                   </span>
                 </div>
               </div>
@@ -342,6 +344,14 @@ function AppContent() {
               >
                 <Settings className="w-4 h-4" />
                 <span className="hidden md:inline">{t('sidebar.config_btn')}</span>
+              </button>
+              <button
+                onClick={() => setView('businessPlan')}
+                className={`flex items-center gap-2 px-2 md:px-4 py-2 rounded-xl transition-all font-medium text-sm ${view === 'businessPlan' ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+                aria-label={t('business_plan.title')}
+              >
+                <Briefcase className="w-4 h-4" />
+                <span className="hidden md:inline">{t('business_plan.title')}</span>
               </button>
               <button
                 onClick={() => setView('master')}
@@ -401,6 +411,10 @@ function AppContent() {
           <MasterDataConfig />
         ) : view === 'certs' ? (
           <CertVerificationPage />
+        ) : view === 'businessPlan' ? (
+          <BusinessPlanProvider activeView={view}>
+            <BusinessPlanPage />
+          </BusinessPlanProvider>
         ) : (
           <div className="flex-1 overflow-auto p-3 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
             <div className="lg:col-span-7 space-y-4 md:space-y-6">
