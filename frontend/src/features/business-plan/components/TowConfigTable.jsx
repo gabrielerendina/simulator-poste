@@ -476,10 +476,14 @@ export default function TowConfigTable({
 
       {/* Warning se pesi != 100% */}
       {tows.length > 0 && !isWeightValid && (
-        <div className="px-4 py-2 bg-amber-50 border-t border-amber-100">
-          <p className="text-xs text-amber-700">
-            La somma dei pesi deve essere 100% (attuale: {totalWeight.toFixed(1)}%)
-          </p>
+        <div className="px-4 py-3 bg-amber-50 border-t border-amber-100">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-amber-800">
+              <strong>Attenzione:</strong> I pesi TOW sommano a <strong>{totalWeight.toFixed(1)}%</strong> invece di 100%.
+              La ripartizione dei ricavi sarà proporzionale ai pesi configurati.
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -389,6 +389,21 @@ class BusinessPlanCreate(BaseModel):
         default=None,
         description="Costo governance manuale (sovrascrive calcolo automatico)"
     )
+    # Governance mode: definisce come calcolare la governance
+    governance_mode: str = Field(
+        default='percentage',
+        description="Modalità calcolo governance: 'percentage', 'fte', 'manual', 'team_mix'"
+    )
+    # Time slices per governance FTE (quando mode='fte')
+    governance_fte_periods: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Periodi con FTE governance variabili: [{month_start, month_end, fte, team_mix}]"
+    )
+    # Flag: applicare riuso anche alla governance
+    governance_apply_reuse: bool = Field(
+        default=False,
+        description="Se True, il fattore riuso si applica anche alla governance"
+    )
     # Soglie margine per visualizzazione e warning
     margin_warning_threshold: float = Field(
         default=0.05,
@@ -470,6 +485,9 @@ class BusinessPlanResponse(BaseModel):
     subcontract_config: Dict[str, Any] = Field(default_factory=dict)
     governance_profile_mix: List[Dict[str, Any]] = Field(default_factory=list)
     governance_cost_manual: Optional[float] = None
+    governance_mode: str = 'percentage'
+    governance_fte_periods: List[Dict[str, Any]] = Field(default_factory=list)
+    governance_apply_reuse: bool = False
     margin_warning_threshold: float = 0.05
     margin_success_threshold: float = 0.15
     # NOTA: tow_costs, tow_prices, total_cost, total_price, margin_pct rimossi

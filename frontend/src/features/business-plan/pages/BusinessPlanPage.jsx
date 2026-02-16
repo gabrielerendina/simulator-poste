@@ -707,7 +707,8 @@ export default function BusinessPlanPage() {
       setTimeout(() => setSaveStatus(null), 3000);
     } catch (err) {
       console.error('Save error:', err);
-      toast.error(`Errore nel salvataggio: ${err.message || 'Errore sconosciuto'}`);
+      const errorMsg = err.response?.data?.detail || err.message || 'Errore sconosciuto';
+      toast.error(`Errore nel salvataggio: ${errorMsg}`);
       setSaveStatus('error');
     } finally {
       setSaving(false);
@@ -802,17 +803,37 @@ export default function BusinessPlanPage() {
       const periods = volumeAdj.periods || [];
       const oldDuration = prev.duration_months || 36;
 
-      // Update all periods where month_end matches the old duration
-      const updatedPeriods = periods.map(period => {
-        if (period.month_end === oldDuration) {
-          return { ...period, month_end: newDuration };
-        }
-        // Also clamp month_end if it exceeds new duration
-        if (period.month_end > newDuration) {
-          return { ...period, month_end: newDuration };
-        }
-        return period;
-      });
+      // Update all periods, removing those that start after new duration
+      let updatedPeriods = periods
+        .map(period => {
+          // Se il periodo inizia dopo la nuova durata, scartalo
+          if ((period.month_start || 1) > newDuration) {
+            return null;
+          }
+
+          // Se il periodo finiva con la vecchia durata, estendilo alla nuova
+          if (period.month_end === oldDuration) {
+            return { ...period, month_end: newDuration };
+          }
+
+          // Se il periodo eccede la nuova durata, clampalo
+          if (period.month_end > newDuration) {
+            return { ...period, month_end: newDuration };
+          }
+
+          return period;
+        })
+        .filter(Boolean); // Rimuovi periodi null
+
+      // Se non ci sono più periodi validi, crea un periodo default
+      if (updatedPeriods.length === 0) {
+        updatedPeriods = [{
+          month_start: 1,
+          month_end: newDuration,
+          by_tow: {},
+          by_profile: {}
+        }];
+      }
 
       return {
         ...prev,

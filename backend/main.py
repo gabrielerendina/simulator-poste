@@ -2349,17 +2349,23 @@ def create_or_update_business_plan(
     db: Session = Depends(get_db)
 ):
     """Create or update a business plan for a lot"""
-    # Verify lot exists
-    lot = crud.get_lot_config(db, lot_key)
-    if not lot:
-        raise HTTPException(status_code=404, detail=f"Lotto '{lot_key}' non trovato")
+    try:
+        # Verify lot exists
+        lot = crud.get_lot_config(db, lot_key)
+        if not lot:
+            raise HTTPException(status_code=404, detail=f"Lotto '{lot_key}' non trovato")
 
-    existing = crud.get_business_plan(db, lot_key)
-    if existing:
-        bp = crud.update_business_plan(db, lot_key, data)
-    else:
-        bp = crud.create_business_plan(db, lot_key, data)
-    return bp
+        existing = crud.get_business_plan(db, lot_key)
+        if existing:
+            bp = crud.update_business_plan(db, lot_key, data)
+        else:
+            bp = crud.create_business_plan(db, lot_key, data)
+        return bp
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error saving business plan for lot '{lot_key}': {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Errore nel salvataggio del Business Plan: {str(e)}")
 
 
 @bp_router.delete("/{lot_key}")

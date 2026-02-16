@@ -520,6 +520,9 @@ def create_business_plan(
         subcontract_config=data.subcontract_config,
         governance_profile_mix=data.governance_profile_mix,
         governance_cost_manual=data.governance_cost_manual,
+        governance_mode=data.governance_mode,
+        governance_fte_periods=data.governance_fte_periods,
+        governance_apply_reuse=data.governance_apply_reuse,
         margin_warning_threshold=data.margin_warning_threshold,
         margin_success_threshold=data.margin_success_threshold,
     )
@@ -558,6 +561,9 @@ def update_business_plan(
     db_bp.subcontract_config = data.subcontract_config
     db_bp.governance_profile_mix = data.governance_profile_mix
     db_bp.governance_cost_manual = data.governance_cost_manual
+    db_bp.governance_mode = data.governance_mode
+    db_bp.governance_fte_periods = data.governance_fte_periods
+    db_bp.governance_apply_reuse = data.governance_apply_reuse
     db_bp.margin_warning_threshold = data.margin_warning_threshold
     db_bp.margin_success_threshold = data.margin_success_threshold
 

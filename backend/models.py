@@ -174,6 +174,22 @@ class BusinessPlanModel(Base):
     # Se impostato, sovrascrive qualsiasi calcolo automatico
     governance_cost_manual = Column(Float, nullable=True, default=None)
 
+    # Governance mode: 'percentage' | 'fte' | 'manual' | 'team_mix'
+    # - percentage: usa governance_pct
+    # - fte: usa governance_fte_periods
+    # - manual: usa governance_cost_manual
+    # - team_mix: usa governance_profile_mix
+    governance_mode = Column(String(20), default='percentage')
+
+    # Time slices per governance FTE
+    # Formato: [{"month_start": 1, "month_end": 12, "fte": 2.0, "team_mix": [...]}]
+    # Permette di variare FTE governance nel tempo
+    governance_fte_periods = Column(SQLiteJSON, default=list)
+
+    # Flag: applicare fattore riuso anche alla governance
+    # Default False: governance non viene ridotta dal riuso
+    governance_apply_reuse = Column(Boolean, default=False)
+
     # Soglie margine per visualizzazione e warning
     # margin_warning_threshold: soglia sotto la quale il margine è considerato a rischio (default 5%)
     # margin_success_threshold: soglia sopra la quale il margine è considerato buono (default 15%)
