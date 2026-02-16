@@ -1,6 +1,6 @@
 import { useState, useMemo, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Users, Plus, Trash2, Upload, Calculator, Save, X, GraduationCap, TrendingDown, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import { Users, Plus, Trash2, Upload, Calculator, Save, X, GraduationCap, TrendingDown, ChevronDown, ChevronUp, Calendar, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 const DAYS_PER_FTE = 220;
 
@@ -181,6 +181,25 @@ export default function TeamCompositionTable({
 
   const hasAnyAdjustment = Object.values(adjustedFteMap).some(v => v.delta !== 0);
 
+  // Validazione allocazioni TOW per profilo
+  const allocationValidation = useMemo(() => {
+    const result = {};
+    for (const profile of team) {
+      const profileId = profile.profile_id || profile.label;
+      const allocation = profile.tow_allocation || {};
+      const total = Object.values(allocation).reduce((sum, pct) => sum + (parseFloat(pct) || 0), 0);
+      const isValid = Math.abs(total - 100) < 0.1;
+      result[profileId] = { total, isValid };
+    }
+    return result;
+  }, [team]);
+
+  const hasInvalidAllocations = Object.values(allocationValidation).some(v => !v.isValid);
+  const invalidProfiles = team.filter(p => {
+    const profileId = p.profile_id || p.label;
+    return !allocationValidation[profileId]?.isValid;
+  });
+
   // Calcoli totali
   const durationYears = durationMonths / 12;
   const totalFte = team.reduce((sum, p) => sum + (parseFloat(p.fte) || 0), 0);
@@ -251,13 +270,14 @@ export default function TeamCompositionTable({
                   </div>
                 </th>
               ))}
+              <th className="px-3 py-3 text-center font-semibold text-slate-600 w-20">Tot %</th>
               <th className="px-4 py-3 w-12"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {team.length === 0 && !showAddRow ? (
               <tr>
-                <td colSpan={(hasAnyAdjustment ? 8 : 6) + tows.length} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={(hasAnyAdjustment ? 8 : 6) + tows.length + 1} className="px-4 py-8 text-center text-slate-500">
                   <div className="flex flex-col items-center gap-2">
                     <Users className="w-8 h-8 text-slate-300" />
                     <p>Nessun profilo configurato</p>
@@ -396,6 +416,25 @@ export default function TeamCompositionTable({
                           />
                         </td>
                       ))}
+                      <td className="px-3 py-2">
+                        {(() => {
+                          const validation = allocationValidation[profileId];
+                          if (!validation) return null;
+                          const isValid = validation.isValid;
+                          const total = validation.total;
+                          return (
+                            <div className={`px-2 py-1 text-center rounded-lg text-xs font-bold flex items-center justify-center gap-1
+                                          ${isValid
+                                            ? 'bg-green-100 text-green-700 border border-green-300'
+                                            : 'bg-red-100 text-red-700 border border-red-300'}`}
+                              title={isValid ? 'Allocazione corretta' : `Allocazione non valida: ${total.toFixed(1)}% (deve essere 100%)`}
+                            >
+                              {isValid ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                              {total.toFixed(0)}%
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="px-4 py-2">
                         <button
                           onClick={() => handleRemoveProfile(idx)}
@@ -411,7 +450,7 @@ export default function TeamCompositionTable({
                     {/* Dettaglio Espanso (Time Slices) */}
                     {isExpanded && adj && adj.periodDetails && (
                       <tr className="bg-slate-50/80">
-                        <td colSpan={(hasAnyAdjustment ? 9 : 7) + tows.length} className="px-8 py-3 bg-slate-50/50">
+                        <td colSpan={(hasAnyAdjustment ? 9 : 7) + tows.length + 1} className="px-8 py-3 bg-slate-50/50">
                           <div className="border-l-2 border-blue-200 pl-6 space-y-2">
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                               <Calendar className="w-3 h-3" />
@@ -520,6 +559,7 @@ export default function TeamCompositionTable({
                 {tows.map(tow => (
                   <td key={tow.tow_id} className="px-3 py-2 text-center text-slate-400">-</td>
                 ))}
+                <td className="px-3 py-2 text-center text-slate-400">-</td>
                 <td className="px-4 py-2">
                   <div className="flex gap-1">
                     <button
@@ -548,50 +588,80 @@ export default function TeamCompositionTable({
 
       {/* Footer con totali */}
       {team.length > 0 && (
-        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Calculator className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-slate-600">Totale:</span>
+        <>
+          <div className="px-4 py-3 bg-slate-50 border-t border-slate-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Calculator className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm text-slate-600">Totale:</span>
+                </div>
+                <div className="px-3 py-1 bg-blue-100 rounded-lg">
+                  <span className="text-sm font-semibold text-blue-700">
+                    {totalFte.toFixed(1)} FTE
+                  </span>
+                </div>
+                {hasAnyAdjustment && (
+                  <>
+                    <span className="text-slate-400">→</span>
+                    <div className="px-3 py-1 bg-emerald-100 rounded-lg border border-emerald-200">
+                      <span className="text-sm font-semibold text-emerald-700">
+                        {totalAdjustedFte.toFixed(1)} FTE eff.
+                      </span>
+                    </div>
+                    <div className={`px-2 py-1 rounded-lg text-xs font-bold ${savingsPct > 0
+                      ? 'bg-red-50 text-red-600 border border-red-200'
+                      : 'bg-slate-100 text-slate-500'
+                      }`}>
+                      {savingsPct > 0 ? `−${savingsPct.toFixed(1)}%` : '—'}
+                    </div>
+                  </>
+                )}
+                <div className="px-3 py-1 bg-slate-200 rounded-lg">
+                  <span className="text-sm font-semibold text-slate-700">
+                    {totalDays.toLocaleString()} GG/anno
+                  </span>
+                </div>
+                <div className="px-3 py-1 bg-blue-200 rounded-lg">
+                  <span className="text-sm font-semibold text-blue-800">
+                    {Math.round(totalDaysOverall).toLocaleString()} GG totali
+                  </span>
+                </div>
               </div>
-              <div className="px-3 py-1 bg-blue-100 rounded-lg">
-                <span className="text-sm font-semibold text-blue-700">
-                  {totalFte.toFixed(1)} FTE
-                </span>
+              <div className="text-xs text-slate-400">
+                1 FTE = {DAYS_PER_FTE} GG/anno · Durata: {durationMonths} mesi ({durationYears.toFixed(1)} anni)
               </div>
-              {hasAnyAdjustment && (
-                <>
-                  <span className="text-slate-400">→</span>
-                  <div className="px-3 py-1 bg-emerald-100 rounded-lg border border-emerald-200">
-                    <span className="text-sm font-semibold text-emerald-700">
-                      {totalAdjustedFte.toFixed(1)} FTE eff.
-                    </span>
-                  </div>
-                  <div className={`px-2 py-1 rounded-lg text-xs font-bold ${savingsPct > 0
-                    ? 'bg-red-50 text-red-600 border border-red-200'
-                    : 'bg-slate-100 text-slate-500'
-                    }`}>
-                    {savingsPct > 0 ? `−${savingsPct.toFixed(1)}%` : '—'}
-                  </div>
-                </>
-              )}
-              <div className="px-3 py-1 bg-slate-200 rounded-lg">
-                <span className="text-sm font-semibold text-slate-700">
-                  {totalDays.toLocaleString()} GG/anno
-                </span>
-              </div>
-              <div className="px-3 py-1 bg-blue-200 rounded-lg">
-                <span className="text-sm font-semibold text-blue-800">
-                  {Math.round(totalDaysOverall).toLocaleString()} GG totali
-                </span>
-              </div>
-            </div>
-            <div className="text-xs text-slate-400">
-              1 FTE = {DAYS_PER_FTE} GG/anno · Durata: {durationMonths} mesi ({durationYears.toFixed(1)} anni)
             </div>
           </div>
-        </div>
+
+          {/* Warning se ci sono allocazioni TOW non valide */}
+          {hasInvalidAllocations && (
+            <div className="px-4 py-2 bg-red-50 border-t border-red-100">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-red-700 mb-1">
+                    Allocazione TOW non valida per {invalidProfiles.length} profil{invalidProfiles.length > 1 ? 'i' : 'o'}:
+                  </p>
+                  <ul className="text-xs text-red-600 space-y-0.5">
+                    {invalidProfiles.map(p => {
+                      const profileId = p.profile_id || p.label;
+                      const validation = allocationValidation[profileId];
+                      return (
+                        <li key={profileId}>
+                          <strong>{p.label}</strong>: {validation.total.toFixed(1)}% (deve essere 100%)
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <p className="text-xs text-red-600 mt-1 italic">
+                    La somma delle percentuali di allocazione ai TOW deve essere esattamente 100% per ogni profilo.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
