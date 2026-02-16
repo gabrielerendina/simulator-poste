@@ -144,6 +144,17 @@ TOW → Practice con catalogo tariffe specifico
 - 0-20% dell'importo di aggiudicazione
 - Assegnazione flessibile per TOW
 
+### 5.6 Ottimizzazione Temporale del Mix
+
+Oltre al mapping statico, è possibile definire un **mix di profili interni variabile nel tempo**. Per un profilo richiesto da Poste, si può specificare una combinazione di profili Lutech le cui percentuali cambiano durante la vita del contratto (es. di anno in anno).
+
+Questo permette un'ottimizzazione progressiva dei costi, ad esempio aumentando la percentuale di profili con seniority inferiore man mano che il progetto matura.
+
+**Esempio**: Un "Senior Developer" di Poste può essere mappato come:
+- **Anno 1**: 80% Lutech Sr. Developer, 20% Lutech Mid. Developer
+- **Anno 2**: 60% Lutech Sr. Developer, 40% Lutech Mid. Developer
+- **Anno 3**: 50% Lutech Sr. Developer, 30% Lutech Mid. Developer, 20% Lutech Jr. Developer
+
 ---
 
 ## 6. Formula Calcolo
@@ -236,6 +247,7 @@ class ProfileCatalog(Base):
     id = Column(String, primary_key=True)
     label = Column(String)
     seniority = Column(String)                  # jr/mid/sr/expert
+    # Il daily_rate definisce il costo standard giornaliero della risorsa interna
     daily_rate = Column(Float)
     practice_id = Column(String, ForeignKey("practices.id"))
 ```
@@ -280,11 +292,26 @@ class BusinessPlanModel(Base):
     # {"TOW_01": "practice_data", "TOW_02": "practice_dev"}
     
     # MAPPING PROFILI (JSON)
+    # Supporta l'ottimizzazione temporale: per ogni profilo Poste, è possibile 
+    # definire una lista di "mix" validi per periodi diversi (es. per anno).
+    # Se esiste un solo elemento, quel mix è valido per tutta la durata.
     profile_mappings = Column(JSON)
     # {
     #   "Senior Developer": [
-    #     {"lutech_profile": "dev_sr", "pct": 0.6},
-    #     {"lutech_profile": "dev_mid", "pct": 0.4}
+    #     {
+    #       "period": "Anno 1",
+    #       "mix": [
+    #         {"lutech_profile": "dev_sr", "pct": 0.8},
+    #         {"lutech_profile": "dev_mid", "pct": 0.2}
+    #       ]
+    #     },
+    #     {
+    #       "period": "Anno 2+",
+    #       "mix": [
+    #         {"lutech_profile": "dev_sr", "pct": 0.6},
+    #         {"lutech_profile": "dev_mid", "pct": 0.4}
+    #       ]
+    #     }
     #   ]
     # }
     
@@ -386,7 +413,7 @@ frontend/src/features/business-plan/
 │   ├── TowConfigTable.jsx           # Configurazione TOW
 │   ├── VolumeAdjustments.jsx        # Slider rettifica volumi
 │   ├── PracticeAssignment.jsx       # Assegnazione TOW → Practice
-│   ├── ProfileMappingEditor.jsx     # Mapping Poste → Lutech
+│   ├── ProfileMappingEditor.jsx     # Mapping Poste → Lutech (statico e time-varying)
 │   ├── ParametersPanel.jsx          # Governance, Risk, Riuso
 │   ├── SubcontractManager.jsx       # Gestione subappalti
 │   ├── CostBreakdown.jsx            # Breakdown costi (chart)
@@ -432,15 +459,20 @@ frontend/src/features/business-plan/
 
 ## 12. Fasi di Sviluppo
 
-### Fase 1: Foundation
-- [ ] Modelli database (BusinessPlan, Practice, ProfileCatalog)
-- [ ] Migration automatica
-- [ ] Schemi Pydantic
-- [ ] CRUD base
+### Fase 1: Foundation + Navigation ✅
+- [x] Modelli database (BusinessPlan, Practice, ProfileCatalog)
+- [x] Migration automatica (`create_all()`)
+- [x] Schemi Pydantic (12 classi)
+- [x] CRUD base (BP, Practice, ProfileCatalog + `seed_practices()`)
+- [x] BusinessPlanService (volume adj, reuse, margin, scenarios)
+- [x] API endpoints (`/api/business-plan/`, `/api/practices/`)
+- [x] BusinessPlanContext (lazy fetch, save, calculate)
+- [x] BusinessPlanPage (placeholder con 9 sezioni)
+- [x] Navigazione: tab header + sidebar button
+- [x] i18n: 30+ chiavi it.json
 
 ### Fase 2: Master Data
-- [ ] API practices e profili
-- [ ] UI gestione catalogo
+- [ ] UI gestione catalogo Practice/Profili
 - [ ] Import/export Excel
 
 ### Fase 3: Import Capitolato
@@ -448,29 +480,54 @@ frontend/src/features/business-plan/
 - [ ] Parser Excel TOW
 - [ ] UI upload
 
-### Fase 4: Configurazione BP
-- [ ] UI rettifica volumi (3 livelli)
-- [ ] Assegnazione TOW → Practice
-- [ ] Profile mapping
-- [ ] Parametri (governance, risk, riuso)
+### Fase 4: Configurazione BP ✅
+- [x] UI rettifica volumi (3 livelli) - VolumeAdjustments.jsx
+- [x] Assegnazione TOW → Practice - TowConfigTable.jsx
+- [ ] Profile mapping editor
+- [x] Parametri (governance, risk, riuso) - ParametersPanel.jsx
 
-### Fase 5: Calcoli
-- [ ] BusinessPlanService
-- [ ] Calcolo costi con breakdown
-- [ ] Calcolo margine (singolo/RTI)
-- [ ] Generazione scenari
+### Fase 5: Calcoli Avanzati (Parziale) ✅
+- [ ] `calculate_tow_cost()` completo
+- [x] Calcolo costi con breakdown - CostBreakdown.jsx
+- [x] Calcolo margine RTI con quote - MarginSimulator.jsx
+- [x] Generazione scenari completi - ScenarioCards.jsx
+- [x] API `/calculate`, `/scenarios`, `/find-discount`
 
-### Fase 6: UI Completa
-- [ ] BusinessPlanPage
-- [ ] CostBreakdown chart
-- [ ] TowPricingTable
-- [ ] MarginSimulator
-- [ ] ScenarioCards
+### Fase 6: UI Completa ✅
+- [x] BusinessPlanPage (layout completo con grid responsive)
+- [x] TeamCompositionTable (gestione profili e FTE)
+- [x] TowConfigTable (configurazione TOW con assegnazione Practice)
+- [x] VolumeAdjustments (slider a 3 livelli)
+- [x] ParametersPanel (governance, risk, riuso, durata)
+- [x] CostBreakdown chart (barre percentuali)
+- [x] MarginSimulator (slider sconto ↔ margine, target margin)
+- [x] ScenarioCards (3 scenari con applicazione diretta)
 
 ### Fase 7: Integrazione
 - [ ] Link con Score Simulator
 - [ ] Unified Decision View
 - [ ] Export BP in report
+
+---
+
+## Componenti Creati (2026-02-13)
+
+```
+frontend/src/features/business-plan/
+├── components/
+│   ├── index.js                    ✅ Export barrel
+│   ├── ParametersPanel.jsx         ✅ Governance, Risk, Riuso
+│   ├── TeamCompositionTable.jsx    ✅ Profili + FTE + allocazione TOW
+│   ├── TowConfigTable.jsx          ✅ Type of Work + Practice
+│   ├── VolumeAdjustments.jsx       ✅ Slider 3 livelli
+│   ├── MarginSimulator.jsx         ✅ Sconto ↔ Margine
+│   ├── CostBreakdown.jsx           ✅ Chart breakdown costi
+│   └── ScenarioCards.jsx           ✅ 3 scenari predefiniti
+├── context/
+│   └── BusinessPlanContext.jsx     ✅ (esistente)
+└── pages/
+    └── BusinessPlanPage.jsx        ✅ Layout completo
+```
 
 ---
 

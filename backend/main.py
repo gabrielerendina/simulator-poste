@@ -35,8 +35,10 @@ from database import SessionLocal, engine
 from logging_config import setup_logging, get_logger
 from auth import OIDCMiddleware, OIDCConfig, get_current_user
 from services.scoring_service import ScoringService
+from services.business_plan_service import BusinessPlanService
 from pdf_generator import generate_pdf_report
 from excel_generator import generate_excel_report
+from excel_business_plan import generate_business_plan_excel
 
 # Setup structured logging
 setup_logging()
@@ -99,6 +101,7 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         crud.seed_initial_data(db)
+        crud.seed_practices(db)
         logger.info("Database seeded successfully")
     except Exception as e:
         logger.error("Failed to seed database", exc_info=True)
@@ -2325,8 +2328,402 @@ def get_cert_verification_config(db: Session = Depends(get_db)):
     )
 
 
-# Register API router
+# --- BUSINESS PLAN ENDPOINTS ---
+
+bp_router = APIRouter(prefix="/api/business-plan", tags=["Business Plan"])
+
+
+@bp_router.get("/{lot_key}", response_model=schemas.BusinessPlanResponse)
+def get_business_plan(lot_key: str, db: Session = Depends(get_db)):
+    """Get business plan for a lot"""
+    bp = crud.get_business_plan(db, lot_key)
+    if not bp:
+        raise HTTPException(status_code=404, detail=f"Business plan per '{lot_key}' non trovato")
+    return bp
+
+
+@bp_router.post("/{lot_key}", response_model=schemas.BusinessPlanResponse)
+def create_or_update_business_plan(
+    lot_key: str,
+    data: schemas.BusinessPlanCreate,
+    db: Session = Depends(get_db)
+):
+    """Create or update a business plan for a lot"""
+    # Verify lot exists
+    lot = crud.get_lot_config(db, lot_key)
+    if not lot:
+        raise HTTPException(status_code=404, detail=f"Lotto '{lot_key}' non trovato")
+
+    existing = crud.get_business_plan(db, lot_key)
+    if existing:
+        bp = crud.update_business_plan(db, lot_key, data)
+    else:
+        bp = crud.create_business_plan(db, lot_key, data)
+    return bp
+
+
+@bp_router.delete("/{lot_key}")
+def delete_business_plan(lot_key: str, db: Session = Depends(get_db)):
+    """Delete a business plan"""
+    if not crud.delete_business_plan(db, lot_key):
+        raise HTTPException(status_code=404, detail=f"Business plan per '{lot_key}' non trovato")
+    return {"status": "success", "message": f"Business plan per '{lot_key}' eliminato"}
+
+
+@bp_router.post("/{lot_key}/calculate", response_model=schemas.BusinessPlanCalculateResponse)
+def calculate_business_plan(
+    lot_key: str,
+    calc_request: schemas.BusinessPlanCalculateRequest,
+    db: Session = Depends(get_db)
+):
+    """Calculate costs and margin for a business plan"""
+    bp = crud.get_business_plan(db, lot_key)
+    if not bp:
+        raise HTTPException(status_code=404, detail=f"Business plan per '{lot_key}' non trovato")
+
+    lot = crud.get_lot_config(db, lot_key)
+    if not lot:
+        raise HTTPException(status_code=404, detail=f"Lotto '{lot_key}' non trovato")
+
+    # Calculate team cost from composition if available
+    team_cost = 0.0
+    tow_breakdown = {}
+    lutech_breakdown = {}
+    if bp.team_composition:
+        # Build profile_rates from practices catalog
+        # Format: {practice_id:profile_id: daily_rate}
+        # Falls back to default_daily_rate if profile not found
+        practices = crud.get_practices(db)
+        profile_rates = {}
+        for practice in practices:
+            for profile in (practice.profiles or []):
+                profile_id = profile.get('id', '')
+                if profile_id:
+                    key = f"{practice.id}:{profile_id}"
+                    profile_rates[key] = float(profile.get('daily_rate', 0.0))
+
+        team_result = BusinessPlanService.calculate_team_cost(
+            team_composition=bp.team_composition,
+            volume_adjustments=bp.volume_adjustments or {},
+            reuse_factor=bp.reuse_factor or 0.0,
+            profile_mappings=bp.profile_mappings or {},
+            profile_rates=profile_rates,
+            duration_months=bp.duration_months or 36,
+            default_daily_rate=bp.default_daily_rate or 250.0
+        )
+        team_cost = team_result["total_cost"]
+        tow_breakdown = team_result["by_tow"]
+        lutech_breakdown = team_result["by_lutech_profile"]
+    else:
+        # No team composition defined - cannot calculate costs
+        team_cost = 0.0
+
+    # Calculate overhead costs
+    # Governance: supports manual override, profile mix, or percentage fallback
+    governance_cost = 0.0
+    if bp.governance_cost_manual is not None:
+        # Manual override
+        governance_cost = float(bp.governance_cost_manual)
+    elif bp.governance_profile_mix and len(bp.governance_profile_mix) > 0:
+        # Calculate based on governance FTE and profile mix
+        total_fte = sum(float(m.get("fte", 0)) for m in (bp.team_composition or []))
+        governance_pct = bp.governance_pct or 0.10
+        governance_fte = total_fte * governance_pct
+        duration_months = bp.duration_months or 36
+        duration_years = duration_months / 12
+        days_per_fte = bp.days_per_fte or 220.0
+
+        total_pct = 0.0
+        weighted_rate = 0.0
+        for item in bp.governance_profile_mix:
+            lutech_profile = item.get("lutech_profile", "")
+            pct = float(item.get("pct", 0)) / 100
+            rate = profile_rates.get(lutech_profile, bp.default_daily_rate or 250.0)
+            total_pct += pct
+            weighted_rate += rate * pct
+
+        if total_pct > 0:
+            avg_rate = weighted_rate / total_pct
+            governance_cost = governance_fte * days_per_fte * duration_years * avg_rate
+    else:
+        # Fallback: percentage of team cost
+        governance_cost = team_cost * (bp.governance_pct or 0.10)
+
+    risk_cost = team_cost * (bp.risk_contingency_pct or 0.05)
+
+    # Subcontract
+    sub_config = bp.subcontract_config or {}
+    sub_quota = float(sub_config.get("quota_pct", 0.0))
+    subcontract_cost = team_cost * sub_quota
+
+    total_cost = team_cost + governance_cost + risk_cost + subcontract_cost
+
+    # Calculate margin
+    margin_result = BusinessPlanService.calculate_margin(
+        base_amount=lot.base_amount,
+        total_cost=total_cost,
+        discount_pct=calc_request.discount_pct,
+        is_rti=calc_request.is_rti,
+        quota_lutech=calc_request.quota_lutech,
+    )
+
+    # Calculate savings percentage using the weighted average from service if available
+    # fallback to simple calculation
+    original_fte = sum(float(m.get("fte", 0)) for m in (bp.team_composition or []))
+    effective_fte = original_fte
+    if bp.volume_adjustments:
+        global_factor = bp.volume_adjustments.get("global", 1.0)
+        effective_fte = original_fte * global_factor * (1 - (bp.reuse_factor or 0.0))
+    savings_pct = ((original_fte - effective_fte) / original_fte * 100) if original_fte > 0 else 0
+
+    return schemas.BusinessPlanCalculateResponse(
+        team_cost=round(team_cost, 2),
+        governance_cost=round(governance_cost, 2),
+        risk_cost=round(risk_cost, 2),
+        subcontract_cost=round(subcontract_cost, 2),
+        total_cost=round(total_cost, 2),
+        total_revenue=margin_result["revenue"],
+        margin=margin_result["margin"],
+        margin_pct=margin_result["margin_pct"],
+        tow_breakdown=tow_breakdown,
+        lutech_breakdown=lutech_breakdown,
+        intervals=team_result.get("intervals", []) if bp.team_composition else [],
+        savings_pct=round(savings_pct, 2),
+    )
+
+
+@bp_router.get("/{lot_key}/scenarios")
+def get_business_plan_scenarios(lot_key: str, db: Session = Depends(get_db)):
+    """Generate 3 scenarios (Conservative/Balanced/Aggressive) for a business plan"""
+    bp = crud.get_business_plan(db, lot_key)
+    if not bp:
+        raise HTTPException(status_code=404, detail=f"Business plan per '{lot_key}' non trovato")
+
+    lot = crud.get_lot_config(db, lot_key)
+    if not lot:
+        raise HTTPException(status_code=404, detail=f"Lotto '{lot_key}' non trovato")
+
+    # Calculate team cost dynamically (same logic as calculate endpoint)
+    team_cost = 0.0
+    if bp.team_composition:
+        practices = crud.get_practices(db)
+        profile_rates = {}
+        for practice in practices:
+            for profile in (practice.profiles or []):
+                profile_id = profile.get('id', '')
+                if profile_id:
+                    key = f"{practice.id}:{profile_id}"
+                    profile_rates[key] = float(profile.get('daily_rate', 0.0))
+
+        team_result = BusinessPlanService.calculate_team_cost(
+            team_composition=bp.team_composition,
+            volume_adjustments=bp.volume_adjustments or {},
+            reuse_factor=bp.reuse_factor or 0.0,
+            profile_mappings=bp.profile_mappings or {},
+            profile_rates=profile_rates,
+            duration_months=bp.duration_months or 36,
+            default_daily_rate=bp.default_daily_rate or 250.0
+        )
+        team_cost = team_result["total_cost"]
+
+    bp_data = {
+        "total_cost": team_cost,
+        "reuse_factor": bp.reuse_factor or 0.0,
+        "volume_adjustments": bp.volume_adjustments or {},
+    }
+
+    # Generate scenarios with full recalculation
+    scenarios = BusinessPlanService.generate_scenarios(
+        bp_data=bp_data,
+        base_amount=lot.base_amount,
+        team_composition=bp.team_composition,
+        volume_adjustments=bp.volume_adjustments or {},
+        profile_mappings=bp.profile_mappings or {},
+        profile_rates=profile_rates if bp.team_composition else {},
+        duration_months=bp.duration_months or 36,
+        default_daily_rate=bp.default_daily_rate or 250.0,
+        governance_pct=bp.governance_pct or 0.10,
+        risk_contingency_pct=bp.risk_contingency_pct or 0.05,
+        subcontract_config=bp.subcontract_config or {},
+    )
+    return {"scenarios": scenarios}
+
+
+@bp_router.get("/{lot_key}/find-discount")
+def find_discount_for_target(
+    lot_key: str,
+    target_margin: float = 15.0,
+    db: Session = Depends(get_db)
+):
+    """Find the discount needed to reach a target margin"""
+    bp = crud.get_business_plan(db, lot_key)
+    if not bp:
+        raise HTTPException(status_code=404, detail=f"Business plan per '{lot_key}' non trovato")
+
+    lot = crud.get_lot_config(db, lot_key)
+    if not lot:
+        raise HTTPException(status_code=404, detail=f"Lotto '{lot_key}' non trovato")
+
+    # Calculate team cost dynamically
+    team_cost = 0.0
+    if bp.team_composition:
+        practices = crud.get_practices(db)
+        profile_rates = {}
+        for practice in practices:
+            for profile in (practice.profiles or []):
+                profile_id = profile.get('id', '')
+                if profile_id:
+                    key = f"{practice.id}:{profile_id}"
+                    profile_rates[key] = float(profile.get('daily_rate', 0.0))
+
+        team_result = BusinessPlanService.calculate_team_cost(
+            team_composition=bp.team_composition,
+            volume_adjustments=bp.volume_adjustments or {},
+            reuse_factor=bp.reuse_factor or 0.0,
+            profile_mappings=bp.profile_mappings or {},
+            profile_rates=profile_rates,
+            duration_months=bp.duration_months or 36,
+            default_daily_rate=bp.default_daily_rate or 250.0
+        )
+        team_cost = team_result["total_cost"]
+
+    bp_data = {
+        "total_cost": team_cost,
+        "governance_pct": bp.governance_pct,
+        "risk_contingency_pct": bp.risk_contingency_pct,
+        "subcontract_config": bp.subcontract_config or {},
+    }
+
+    cost_breakdown = BusinessPlanService.calculate_total_cost(bp_data)
+
+    is_rti = lot.rti_enabled
+    quota_lutech = lot.rti_quotas.get("Lutech", 100) / 100 if is_rti and lot.rti_quotas else 1.0
+
+    suggested_discount = BusinessPlanService.find_discount_for_margin(
+        base_amount=lot.base_amount,
+        total_cost=cost_breakdown["total"],
+        target_margin_pct=target_margin,
+        is_rti=is_rti,
+        quota_lutech=quota_lutech,
+    )
+
+    return {
+        "target_margin_pct": target_margin,
+        "suggested_discount_pct": suggested_discount,
+        "total_cost": cost_breakdown["total"],
+        "base_amount": lot.base_amount,
+    }
+
+
+@bp_router.post("/export-excel")
+def export_business_plan_excel(data: schemas.ExportBusinessPlanRequest, db: Session = Depends(get_db)):
+    """
+    Export Business Plan comprehensive Excel report with multiple sheets,
+    formulas, conditional formatting, and validations.
+    """
+    logger.info(f"Business Plan Excel export requested for lot: {data.lot_key}")
+
+    # Generate Excel report
+    try:
+        buffer = generate_business_plan_excel(
+            lot_key=data.lot_key,
+            business_plan=data.business_plan,
+            costs=data.costs,
+            clean_team_cost=data.clean_team_cost,
+            base_amount=data.base_amount,
+            is_rti=data.is_rti,
+            quota_lutech=data.quota_lutech,
+            scenarios=data.scenarios,
+            tow_breakdown=data.tow_breakdown,
+            profile_rates=data.profile_rates,
+            intervals=data.intervals,
+            lutech_breakdown=data.lutech_breakdown,
+        )
+    except Exception as e:
+        logger.error(f"Error generating Business Plan Excel: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generating Excel: {str(e)}")
+
+    logger.info(f"Business Plan Excel export completed for lot: {data.lot_key}")
+
+    # Create safe filename
+    safe_lot_key = data.lot_key.replace(' ', '_').replace('/', '_')
+    filename = f"business_plan_{safe_lot_key}.xlsx"
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
+
+
+@api_router.post("/business-plan-export")
+def export_business_plan_excel_alias(data: schemas.ExportBusinessPlanRequest, db: Session = Depends(get_db)):
+    """
+    Alias for Business Plan Excel export to avoid router issues.
+    """
+    return export_business_plan_excel(data, db)
+
+
+# --- PRACTICE ENDPOINTS ---
+
+practice_router = APIRouter(prefix="/api/practices", tags=["Practices"])
+
+
+@practice_router.get("/", response_model=List[schemas.PracticeResponse])
+def get_practices(db: Session = Depends(get_db)):
+    """Get all practices"""
+    return crud.get_practices(db)
+
+
+@practice_router.post("/", response_model=schemas.PracticeResponse)
+def create_practice(data: schemas.PracticeCreate, db: Session = Depends(get_db)):
+    """Create a new practice"""
+    existing = crud.get_practice(db, data.id)
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Practice '{data.id}' già esistente")
+    return crud.create_practice(db, data)
+
+
+@practice_router.get("/{practice_id}", response_model=schemas.PracticeResponse)
+def get_practice(practice_id: str, db: Session = Depends(get_db)):
+    """Get a specific practice"""
+    practice = crud.get_practice(db, practice_id)
+    if not practice:
+        raise HTTPException(status_code=404, detail=f"Practice '{practice_id}' non trovata")
+    return practice
+
+
+@practice_router.put("/{practice_id}", response_model=schemas.PracticeResponse)
+def update_practice(practice_id: str, data: schemas.PracticeCreate, db: Session = Depends(get_db)):
+    """Update a practice"""
+    practice = crud.update_practice(db, practice_id, data)
+    if not practice:
+        raise HTTPException(status_code=404, detail=f"Practice '{practice_id}' non trovata")
+    return practice
+
+
+@practice_router.delete("/{practice_id}")
+def delete_practice(practice_id: str, db: Session = Depends(get_db)):
+    """Delete a practice"""
+    if not crud.delete_practice(db, practice_id):
+        raise HTTPException(status_code=404, detail=f"Practice '{practice_id}' non trovata")
+    return {"status": "success", "message": f"Practice '{practice_id}' eliminata"}
+
+
+# NOTA: Gli endpoint /{practice_id}/profiles sono stati rimossi
+# I profili sono gestiti come JSON dentro practices.profiles
+# Usare PUT /api/practices/{practice_id} per aggiornare i profili
+
+
+# Register all routers
 app.include_router(api_router)
+app.include_router(bp_router)
+app.include_router(practice_router)
 
 
 if __name__ == "__main__":

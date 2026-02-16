@@ -19,7 +19,7 @@ services:
       - OIDC_ISSUER=${OIDC_ISSUER}
       - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
       - OIDC_AUDIENCE=${OIDC_AUDIENCE}
-    restart: always
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
       interval: 30s
@@ -33,16 +33,16 @@ services:
       args:
         # Use /api (relative) so nginx proxies to backend internally
         - VITE_API_URL=/api
-        - VITE_OIDC_AUTHORITY=https://asojzafbi.accounts.ondemand.com
-        - VITE_OIDC_CLIENT_ID=c763a5f1-287c-4115-93bc-61e06b1bd7a3
-        - VITE_OIDC_REDIRECT_URI=http://localhost:5173/callback
-        - VITE_OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:5173
+        - VITE_OIDC_AUTHORITY=${VITE_OIDC_AUTHORITY:-https://asojzafbi.accounts.ondemand.com}
+        - VITE_OIDC_CLIENT_ID=${VITE_OIDC_CLIENT_ID:-}
+        - VITE_OIDC_REDIRECT_URI=${VITE_OIDC_REDIRECT_URI:-http://localhost:5173/callback}
+        - VITE_OIDC_POST_LOGOUT_REDIRECT_URI=${VITE_OIDC_POST_LOGOUT_REDIRECT_URI:-http://localhost:5173}
     ports:
       - "5173:80"
     depends_on:
       backend:
         condition: service_healthy
-    restart: always
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s

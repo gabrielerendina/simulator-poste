@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Settings, X, FileSearch, Building2, AlertCircle } from 'lucide-react';
+import { Settings, X, FileSearch, Building2, AlertCircle, Briefcase } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../utils/formatters';
 import { useConfig } from '../features/config/context/ConfigContext';
@@ -39,32 +39,49 @@ export default function Sidebar({
     const p_my = baseAmount * (1 - myDiscount / 100);
     const isBest = p_my < p_best;
 
+    // Keep a stable ref to updateConfig to avoid re-triggering the effect
+    const updateConfigRef = useRef(updateConfig);
+    useEffect(() => {
+        updateConfigRef.current = updateConfig;
+    }, [updateConfig]);
+
+    // Stable ref for lotData to use inside effect without causing re-triggers
+    const lotDataRef = useRef(lotData);
+    useEffect(() => {
+        lotDataRef.current = lotData;
+    }, [lotData]);
+
+    // Serialize rtiCompanies to a string for stable dependency comparison
+    const rtiCompaniesKey = rtiCompanies.join(',');
+
     // Initialize local quotas from config when lot changes
     useEffect(() => {
-        if (lotData?.rti_quotas && Object.keys(lotData.rti_quotas).length > 0) {
-            setLocalQuotas(lotData.rti_quotas);
-        } else if (isRti && rtiCompanies.length > 0) {
+        const currentLotData = lotDataRef.current;
+        if (currentLotData?.rti_quotas && Object.keys(currentLotData.rti_quotas).length > 0) {
+            setLocalQuotas(currentLotData.rti_quotas);
+        } else if (isRti && rtiCompaniesKey) {
             // Initialize default quotas: Lutech 70%, rest split among partners
-            const partnerCount = rtiCompanies.length;
+            const companies = rtiCompaniesKey.split(',');
+            const partnerCount = companies.length;
             const remaining = 30.0;
             const perPartner = partnerCount > 0 ? Math.round((remaining / partnerCount) * 100) / 100 : 0;
             const defaultQuotas = { Lutech: 70.0 };
-            rtiCompanies.forEach(company => {
+            companies.forEach(company => {
                 defaultQuotas[company] = perPartner;
             });
             setLocalQuotas(defaultQuotas);
             
             // Auto-save default quotas to backend so they're available for export
             // Only save once per lot to avoid loops
-            if (lotData && selectedLot && !savedDefaultQuotasRef.current.has(selectedLot)) {
+            if (currentLotData && selectedLot && !savedDefaultQuotasRef.current.has(selectedLot)) {
                 savedDefaultQuotasRef.current.add(selectedLot);
-                const updatedLot = { ...lotData, rti_quotas: defaultQuotas };
-                updateConfig({ [selectedLot]: updatedLot });
+                const updatedLot = { ...currentLotData, rti_quotas: defaultQuotas };
+                updateConfigRef.current({ [selectedLot]: updatedLot });
             }
         } else {
             setLocalQuotas({});
         }
-    }, [selectedLot, lotData, isRti, rtiCompanies, updateConfig]);
+    }, [selectedLot, isRti, rtiCompaniesKey]);
 
     // Validate that quotas sum to 100
     const totalQuota = Object.values(localQuotas).reduce((sum, q) => sum + (parseFloat(q) || 0), 0);
@@ -261,7 +278,7 @@ export default function Sidebar({
 
                             {/* Company rows */}
                             <div className="bg-white divide-y divide-slate-100">
-                                {allRtiCompanies.map((company, idx) => {
+                                {allRtiCompanies.map((company) => {
                                     const quota = parseFloat(localQuotas[company]) || 0;
                                     const amount = p_my * (quota / 100);
                                     const isLutech = company === 'Lutech';
@@ -350,8 +367,22 @@ export default function Sidebar({
                 )}
             </div>
 
-            {/* Bottom Section - Cert Verification */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50">
+            {/* Bottom Section - Business Plan & Cert Verification */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-2">
+                <button
+                    onClick={() => {
+                        if (onNavigate) onNavigate('businessPlan');
+                        if (window.innerWidth < 768 && onClose) onClose();
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all font-medium text-sm ${
+                        currentView === 'businessPlan'
+                            ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                >
+                    <Briefcase className="w-4 h-4" />
+                    <span>{t('business_plan.title')}</span>
+                </button>
                 <button
                     onClick={() => {
                         if (onNavigate) onNavigate('certs');
