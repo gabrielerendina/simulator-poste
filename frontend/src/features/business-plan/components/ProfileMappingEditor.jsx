@@ -535,12 +535,12 @@ export default function ProfileMappingEditor({
                         <button
                           onClick={() => handleSyncWithVolumeAdjustments(profileId)}
                           disabled={disabled}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-indigo-600 border border-indigo-200 
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-indigo-600 border border-indigo-200
                                  hover:bg-indigo-50 rounded-lg text-xs font-semibold transition-all shadow-sm"
                           title="Sincronizza i periodi di mapping con le fasi della Rettifica Volumi"
                         >
                           <RefreshCw className="w-3.5 h-3.5" />
-                          Sincronizza con Rettifica
+                          Sincronizza Periodi
                         </button>
                       )}
                       <button

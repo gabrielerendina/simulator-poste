@@ -505,6 +505,8 @@ def create_business_plan(
     db_bp = models.BusinessPlanModel(
         lot_key=lot_key,
         duration_months=data.duration_months,
+        start_year=data.start_year,
+        start_month=data.start_month,
         days_per_fte=data.days_per_fte,
         default_daily_rate=data.default_daily_rate,
         governance_pct=data.governance_pct,
@@ -516,6 +518,10 @@ def create_business_plan(
         tow_assignments=data.tow_assignments,
         profile_mappings=profile_mappings_dict,
         subcontract_config=data.subcontract_config,
+        governance_profile_mix=data.governance_profile_mix,
+        governance_cost_manual=data.governance_cost_manual,
+        margin_warning_threshold=data.margin_warning_threshold,
+        margin_success_threshold=data.margin_success_threshold,
     )
     db.add(db_bp)
     db.commit()
@@ -537,6 +543,8 @@ def update_business_plan(
         profile_mappings_dict[profile_id] = [p.model_dump() for p in periods]
 
     db_bp.duration_months = data.duration_months
+    db_bp.start_year = data.start_year
+    db_bp.start_month = data.start_month
     db_bp.days_per_fte = data.days_per_fte
     db_bp.default_daily_rate = data.default_daily_rate
     db_bp.governance_pct = data.governance_pct
@@ -548,6 +556,10 @@ def update_business_plan(
     db_bp.tow_assignments = data.tow_assignments
     db_bp.profile_mappings = profile_mappings_dict
     db_bp.subcontract_config = data.subcontract_config
+    db_bp.governance_profile_mix = data.governance_profile_mix
+    db_bp.governance_cost_manual = data.governance_cost_manual
+    db_bp.margin_warning_threshold = data.margin_warning_threshold
+    db_bp.margin_success_threshold = data.margin_success_threshold
 
     db.commit()
     db.refresh(db_bp)

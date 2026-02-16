@@ -362,6 +362,8 @@ class SubcontractConfig(BaseModel):
 class BusinessPlanCreate(BaseModel):
     """Schema per creare/aggiornare un Business Plan"""
     duration_months: int = 36
+    start_year: Optional[int] = Field(default=None, description="Anno inizio contratto (es. 2026)")
+    start_month: Optional[int] = Field(default=None, ge=1, le=12, description="Mese inizio contratto (1-12)")
     days_per_fte: float = 220.0
     default_daily_rate: float = 250.0
     governance_pct: float = Field(default=0.10, ge=0.0, le=1.0)  # Decimali 0-1 (frontend invia /100)
@@ -453,6 +455,8 @@ class BusinessPlanResponse(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     duration_months: int = 36
+    start_year: Optional[int] = None
+    start_month: Optional[int] = None
     days_per_fte: float = 220.0
     default_daily_rate: float = 250.0
     governance_pct: float = 0.10

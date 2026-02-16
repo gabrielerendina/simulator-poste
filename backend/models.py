@@ -116,6 +116,8 @@ class BusinessPlanModel(Base):
 
     # Parametri generali
     duration_months = Column(Integer, default=36)
+    start_year = Column(Integer, nullable=True, default=None)  # Anno inizio contratto (es. 2026)
+    start_month = Column(Integer, nullable=True, default=None)  # Mese inizio contratto (1-12)
     days_per_fte = Column(Float, default=220.0)
     default_daily_rate = Column(Float, default=250.0)
     governance_pct = Column(Float, default=0.10)

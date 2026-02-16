@@ -114,8 +114,13 @@ export default function BusinessPlanPage() {
     } else if (selectedLot) {
       // Initialize empty BP (values already in percentage form)
       const defaultDuration = 36;
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
       setLocalBP({
         duration_months: defaultDuration,
+        start_year: currentYear,
+        start_month: currentMonth,
         days_per_fte: DAYS_PER_FTE,
         default_daily_rate: DEFAULT_DAILY_RATE,
         governance_pct: 4,
@@ -828,6 +833,45 @@ export default function BusinessPlanPage() {
     setLocalBP(prev => ({ ...prev, default_daily_rate: parseFloat(rate) || DEFAULT_DAILY_RATE }));
   };
 
+  const handleStartYearChange = (year) => {
+    setLocalBP(prev => ({ ...prev, start_year: parseInt(year) || null }));
+  };
+
+  const handleStartMonthChange = (month) => {
+    setLocalBP(prev => ({ ...prev, start_month: parseInt(month) || null }));
+  };
+
+  // Calcola data fine e anni interessati
+  const getContractPeriodInfo = () => {
+    if (!localBP?.start_year || !localBP?.start_month || !localBP?.duration_months) {
+      return null;
+    }
+
+    const startYear = localBP.start_year;
+    const startMonth = localBP.start_month;
+    const durationMonths = localBP.duration_months;
+
+    // Calcola data fine
+    const totalMonths = startMonth + durationMonths - 1;
+    const endYear = startYear + Math.floor((totalMonths - 1) / 12);
+    const endMonth = ((totalMonths - 1) % 12) + 1;
+
+    // Calcola anni interessati
+    const years = [];
+    for (let year = startYear; year <= endYear; year++) {
+      years.push(year);
+    }
+
+    return {
+      startYear,
+      startMonth,
+      endYear,
+      endMonth,
+      years,
+      yearsCount: years.length
+    };
+  };
+
   const handleSubcontractChange = (subConfig) => {
     setLocalBP(prev => ({ ...prev, subcontract_config: subConfig }));
   };
@@ -1235,6 +1279,72 @@ export default function BusinessPlanPage() {
                 </div>
 
                 <div className="p-5 space-y-5">
+                  {/* Data Inizio Contratto */}
+                  <div className="pb-4 border-b border-slate-100">
+                    <label className="text-sm font-medium text-slate-700 mb-3 block">Data Inizio Contratto</label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Anno */}
+                      <div className="space-y-2">
+                        <label className="text-xs text-slate-500">Anno</label>
+                        <input
+                          type="number"
+                          min={2020}
+                          max={2040}
+                          value={localBP.start_year || ''}
+                          onChange={(e) => handleStartYearChange(e.target.value)}
+                          placeholder="es. 2026"
+                          className="w-full px-3 py-2 text-center border border-slate-200 rounded-lg
+                                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+
+                      {/* Mese */}
+                      <div className="space-y-2">
+                        <label className="text-xs text-slate-500">Mese</label>
+                        <select
+                          value={localBP.start_month || ''}
+                          onChange={(e) => handleStartMonthChange(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg
+                                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">Seleziona...</option>
+                          <option value="1">Gennaio</option>
+                          <option value="2">Febbraio</option>
+                          <option value="3">Marzo</option>
+                          <option value="4">Aprile</option>
+                          <option value="5">Maggio</option>
+                          <option value="6">Giugno</option>
+                          <option value="7">Luglio</option>
+                          <option value="8">Agosto</option>
+                          <option value="9">Settembre</option>
+                          <option value="10">Ottobre</option>
+                          <option value="11">Novembre</option>
+                          <option value="12">Dicembre</option>
+                        </select>
+                      </div>
+
+                      {/* Info calcolate */}
+                      {(() => {
+                        const periodInfo = getContractPeriodInfo();
+                        if (!periodInfo) return null;
+
+                        const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+
+                        return (
+                          <div className="space-y-2">
+                            <label className="text-xs text-slate-500">Periodo Contratto</label>
+                            <div className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 text-sm font-medium">
+                              {monthNames[periodInfo.startMonth - 1]} {periodInfo.startYear} → {monthNames[periodInfo.endMonth - 1]} {periodInfo.endYear}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {periodInfo.yearsCount} ann{periodInfo.yearsCount > 1 ? 'i' : 'o'} interessat{periodInfo.yearsCount > 1 ? 'i' : 'o'}: {periodInfo.years.join(', ')}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
                   {/* Parametri base (griglia orizzontale) */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Durata (mesi) */}
@@ -1368,6 +1478,9 @@ export default function BusinessPlanPage() {
                 lutechProfileBreakdown={lutechProfileBreakdown}
                 teamMixRate={teamMixRate}
                 showTowDetail={Object.keys(towBreakdown).length > 0}
+                durationMonths={localBP.duration_months || 36}
+                startYear={localBP.start_year}
+                startMonth={localBP.start_month}
               />
             </div>
           )}
