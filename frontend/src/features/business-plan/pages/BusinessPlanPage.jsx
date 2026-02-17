@@ -1547,6 +1547,7 @@ export default function BusinessPlanPage() {
                 }}
                 practices={practices}
                 totalTeamFte={(localBP.team_composition || []).reduce((sum, m) => sum + (parseFloat(m.fte) || 0), 0)}
+                teamCost={cleanTeamCost || 0}
                 durationMonths={localBP.duration_months}
                 daysPerFte={localBP.days_per_fte || DAYS_PER_FTE}
                 onChange={handleParametersChange}
