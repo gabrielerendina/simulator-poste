@@ -800,20 +800,35 @@ export default function ProfileMappingEditor({
                 <div className="flex items-start gap-2">
                   <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
                   <div>
-                    <div className="font-semibold text-slate-700">Per ogni profilo Poste mappato:</div>
+                    <div className="font-semibold text-slate-700">Per ogni PERIODO di mappatura (mix Lutech):</div>
                     <div className="text-slate-600 mt-1">
                       <code className="bg-slate-100 px-2 py-0.5 rounded text-xs">
                         tariffa_periodo = Σ(tariffa_Lutech × peso%) ÷ Σpeso%
                       </code>
                     </div>
                     <div className="text-xs text-slate-500 mt-1">
-                      Esempio: 60% Senior (€350/gg) + 40% Manager (€450/gg) = (350×0.6 + 450×0.4) ÷ 1.0 = €390/gg
+                      Es: 60% Senior (€350) + 40% Manager (€450) = (350×0.6 + 450×0.4) ÷ 1.0 = <strong>€390/gg</strong>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2">
                   <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                  <div>
+                    <div className="font-semibold text-slate-700">Per ogni PROFILO Poste (media dei periodi):</div>
+                    <div className="text-slate-600 mt-1">
+                      <code className="bg-slate-100 px-2 py-0.5 rounded text-xs">
+                        tariffa_profilo = media(tariffa_periodo₁, tariffa_periodo₂, ...)
+                      </code>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Es: PM con 2 periodi (€400, €380) → media = <strong>€390/gg</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">3</span>
                   <div>
                     <div className="font-semibold text-slate-700">Media pesata per FTE:</div>
                     <div className="text-slate-600 mt-1">
@@ -822,13 +837,13 @@ export default function ProfileMappingEditor({
                       </code>
                     </div>
                     <div className="text-xs text-slate-500 mt-1">
-                      Esempio: PM 2 FTE × €400/gg + DEV 5 FTE × €350/gg = €2,550
+                      Es: PM 2 FTE × €390 + DEV 5 FTE × €350 = €780 + €1,750 = <strong>€2,530</strong>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2">
-                  <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                  <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">4</span>
                   <div>
                     <div className="font-semibold text-slate-700">Costo medio finale:</div>
                     <div className="text-slate-600 mt-1">
@@ -837,7 +852,7 @@ export default function ProfileMappingEditor({
                       </code>
                     </div>
                     <div className="text-xs text-slate-500 mt-1">
-                      Esempio: €2,550 ÷ 7 FTE = <strong>€364/gg</strong>
+                      Es: €2,530 ÷ 7 FTE = <strong>€361/gg</strong>
                     </div>
                   </div>
                 </div>
