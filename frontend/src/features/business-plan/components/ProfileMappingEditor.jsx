@@ -384,29 +384,49 @@ export default function ProfileMappingEditor({
     return { effectiveFte: Math.round(effectiveFte * 100) / 100, factor: combinedFactor * reuseMultiplier };
   };
 
-  // Calcola tariffa media complessiva pesata per FTE
+  // Calcola tariffa media complessiva pesata per FTE con breakdown dettagliato
   const overallTeamMixRate = useMemo(() => {
-    if (teamComposition.length === 0) return { avgRate: 0, totalFte: 0, totalDaysYear: 0, hasMappings: false };
+    if (teamComposition.length === 0) return { avgRate: 0, totalFte: 0, totalDaysYear: 0, hasMappings: false, breakdown: [] };
 
     let totalWeightedRate = 0;
     let totalFte = 0;
     let mappedFte = 0;
+    const breakdown = []; // Dettaglio per ogni profilo mappato
 
     for (const member of teamComposition) {
       const profileId = member.profile_id || member.label;
+      const profileLabel = member.label || profileId;
       const fte = parseFloat(member.fte) || 0;
       totalFte += fte;
 
       const periodMappings = mappings[profileId] || [];
       if (periodMappings.length === 0) continue;
 
-      // Media delle tariffe dei periodi per questo profilo
+      // Dettaglio periodi per questo profilo
+      const periodDetails = [];
       let profileRate = 0;
       let validPeriods = 0;
 
       for (const pm of periodMappings) {
-        const { mixRate } = calculatePeriodMixCost(pm.mix);
+        const { mixRate, totalPct } = calculatePeriodMixCost(pm.mix);
         if (mixRate > 0) {
+          // Dettaglio mix Lutech per questo periodo
+          const mixDetails = (pm.mix || []).map(m => {
+            const lp = lutechProfiles.find(p => p.full_id === m.lutech_profile);
+            return {
+              label: lp ? `${lp.practice_label} ${lp.label}` : m.lutech_profile,
+              pct: m.pct,
+              rate: lp?.daily_rate || 0,
+            };
+          }).filter(m => m.pct > 0);
+
+          periodDetails.push({
+            monthStart: pm.month_start,
+            monthEnd: pm.month_end,
+            mixRate: Math.round(mixRate),
+            totalPct,
+            mixDetails,
+          });
           profileRate += mixRate;
           validPeriods++;
         }
@@ -414,8 +434,19 @@ export default function ProfileMappingEditor({
 
       if (validPeriods > 0) {
         profileRate = profileRate / validPeriods;
-        totalWeightedRate += profileRate * fte;
+        const weightedContrib = profileRate * fte;
+        totalWeightedRate += weightedContrib;
         mappedFte += fte;
+
+        breakdown.push({
+          profileId,
+          profileLabel,
+          fte,
+          periodCount: validPeriods,
+          periodDetails,
+          avgRate: Math.round(profileRate),
+          weightedContrib: Math.round(weightedContrib),
+        });
       }
     }
 
@@ -426,8 +457,10 @@ export default function ProfileMappingEditor({
       mappedFte,
       totalDaysYear: Math.round(totalFte * daysPerFte),
       hasMappings: mappedFte > 0,
+      breakdown,
+      totalWeightedRate: Math.round(totalWeightedRate),
     };
-  }, [teamComposition, mappings, calculatePeriodMixCost, daysPerFte]);
+  }, [teamComposition, mappings, calculatePeriodMixCost, daysPerFte, lutechProfiles]);
 
   if (teamComposition.length === 0) {
     return (
@@ -786,81 +819,113 @@ export default function ProfileMappingEditor({
             </div>
           </div>
 
-          {/* Formula Explanation - Step by Step */}
+          {/* Formula Explanation - Step by Step with Dynamic Data */}
           <details className="mt-4 group">
             <summary className="flex items-center gap-2 cursor-pointer text-sm text-indigo-600 hover:text-indigo-700 font-medium select-none">
               <Info className="w-4 h-4" />
               <span>Come viene calcolato il costo medio?</span>
               <ChevronDown className="w-4 h-4 ml-1 group-open:rotate-180 transition-transform" />
             </summary>
-            <div className="mt-3 p-4 bg-white rounded-xl border border-indigo-100 text-sm space-y-3">
-              <div className="font-bold text-slate-700 border-b pb-2 mb-3">Formula COSTO MEDIO €/GIORNO</div>
+            <div className="mt-3 p-4 bg-white rounded-xl border border-indigo-100 text-sm space-y-4">
+              <div className="font-bold text-slate-700 border-b pb-2">Formula COSTO MEDIO €/GIORNO — Calcolo Attuale</div>
 
-              <div className="space-y-2">
+              {/* STEP 1 & 2: Per ogni profilo mappato */}
+              <div className="space-y-3">
                 <div className="flex items-start gap-2">
-                  <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                  <div>
-                    <div className="font-semibold text-slate-700">Per ogni PERIODO di mappatura (mix Lutech):</div>
-                    <div className="text-slate-600 mt-1">
-                      <code className="bg-slate-100 px-2 py-0.5 rounded text-xs">
-                        tariffa_periodo = Σ(tariffa_Lutech × peso%) ÷ Σpeso%
-                      </code>
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      Es: 60% Senior (€350) + 40% Manager (€450) = (350×0.6 + 450×0.4) ÷ 1.0 = <strong>€390/gg</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                  <div>
-                    <div className="font-semibold text-slate-700">Per ogni PROFILO Poste (media dei periodi):</div>
-                    <div className="text-slate-600 mt-1">
-                      <code className="bg-slate-100 px-2 py-0.5 rounded text-xs">
-                        tariffa_profilo = media(tariffa_periodo₁, tariffa_periodo₂, ...)
-                      </code>
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      Es: PM con 2 periodi (€400, €380) → media = <strong>€390/gg</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                  <div>
-                    <div className="font-semibold text-slate-700">Media pesata per FTE:</div>
-                    <div className="text-slate-600 mt-1">
-                      <code className="bg-slate-100 px-2 py-0.5 rounded text-xs">
-                        costo_pesato = Σ(tariffa_profilo × FTE_profilo)
-                      </code>
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      Es: PM 2 FTE × €390 + DEV 5 FTE × €350 = €780 + €1,750 = <strong>€2,530</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">4</span>
-                  <div>
-                    <div className="font-semibold text-slate-700">Costo medio finale:</div>
-                    <div className="text-slate-600 mt-1">
-                      <code className="bg-slate-100 px-2 py-0.5 rounded text-xs">
-                        COSTO_MEDIO = costo_pesato ÷ FTE_mappati
-                      </code>
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      Es: €2,530 ÷ 7 FTE = <strong>€361/gg</strong>
-                    </div>
+                  <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">1-2</span>
+                  <div className="flex-1">
+                    <div className="font-semibold text-slate-700 mb-2">Tariffa media per profilo (da mix Lutech):</div>
+                    {overallTeamMixRate.breakdown.length > 0 ? (
+                      <div className="space-y-2">
+                        {overallTeamMixRate.breakdown.map((prof, idx) => (
+                          <div key={idx} className="bg-slate-50 rounded-lg p-2 border border-slate-100">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-slate-700">{prof.profileLabel}</span>
+                              <span className="text-indigo-600 font-bold">€{prof.avgRate}/gg</span>
+                            </div>
+                            {prof.periodDetails.length > 0 && (
+                              <div className="mt-1 text-xs text-slate-500">
+                                {prof.periodDetails.map((pd, pi) => (
+                                  <div key={pi} className="flex items-center gap-1 mt-0.5">
+                                    <span className="text-slate-400">M{pd.monthStart}-{pd.monthEnd}:</span>
+                                    {pd.mixDetails.map((m, mi) => (
+                                      <span key={mi} className="bg-white px-1 rounded border">
+                                        {m.pct}% {m.label.split(' ').pop()} (€{m.rate})
+                                      </span>
+                                    ))}
+                                    <span className="text-slate-600">→ €{pd.mixRate}/gg</span>
+                                  </div>
+                                ))}
+                                {prof.periodCount > 1 && (
+                                  <div className="text-slate-600 mt-1">
+                                    Media {prof.periodCount} periodi = <strong>€{prof.avgRate}/gg</strong>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-slate-400 italic">Nessun profilo mappato</div>
+                    )}
                   </div>
                 </div>
               </div>
 
-              <div className="border-t pt-3 mt-3 text-xs text-slate-500">
-                <strong>Nota:</strong> Solo i profili con mappatura Lutech completa (100%) contribuiscono al calcolo.
-                FTE non mappati: {(overallTeamMixRate.totalFte - overallTeamMixRate.mappedFte).toFixed(1)}
+              {/* STEP 3: Pesatura FTE */}
+              <div className="flex items-start gap-2">
+                <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                <div className="flex-1">
+                  <div className="font-semibold text-slate-700 mb-1">Media pesata per FTE:</div>
+                  <code className="bg-slate-100 px-2 py-1 rounded text-xs block mb-2">
+                    costo_pesato = Σ(tariffa_profilo × FTE)
+                  </code>
+                  {overallTeamMixRate.breakdown.length > 0 && (
+                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 text-xs">
+                      <div className="space-y-1">
+                        {overallTeamMixRate.breakdown.map((prof, idx) => (
+                          <div key={idx} className="flex items-center justify-between">
+                            <span>{prof.profileLabel}: €{prof.avgRate} × {prof.fte} FTE</span>
+                            <span className="font-medium">= €{prof.weightedContrib.toLocaleString('it-IT')}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="border-t mt-2 pt-2 flex justify-between font-bold text-slate-700">
+                        <span>Totale pesato:</span>
+                        <span>€{overallTeamMixRate.totalWeightedRate.toLocaleString('it-IT')}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* STEP 4: Divisione finale */}
+              <div className="flex items-start gap-2">
+                <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                <div className="flex-1">
+                  <div className="font-semibold text-slate-700 mb-1">Costo medio finale:</div>
+                  <code className="bg-slate-100 px-2 py-1 rounded text-xs block mb-2">
+                    COSTO_MEDIO = costo_pesato ÷ FTE_mappati
+                  </code>
+                  {overallTeamMixRate.mappedFte > 0 && (
+                    <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-100">
+                      <div className="flex items-center justify-between text-indigo-800">
+                        <span>€{overallTeamMixRate.totalWeightedRate.toLocaleString('it-IT')} ÷ {overallTeamMixRate.mappedFte.toFixed(1)} FTE</span>
+                        <span className="text-xl font-black">= €{Math.round(overallTeamMixRate.avgRate)}/gg</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t pt-3 text-xs text-slate-500">
+                <strong>Nota:</strong> Solo i profili con mappatura Lutech completa (100%) contribuiscono.
+                {overallTeamMixRate.totalFte - overallTeamMixRate.mappedFte > 0 && (
+                  <span className="text-amber-600 ml-1">
+                    FTE non mappati: {(overallTeamMixRate.totalFte - overallTeamMixRate.mappedFte).toFixed(1)}
+                  </span>
+                )}
               </div>
             </div>
           </details>
