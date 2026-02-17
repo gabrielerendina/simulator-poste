@@ -380,11 +380,12 @@ export default function TowAnalysis({
         }
 
         // Target mix for loss TOW: minimize senior
-        const seniorReduction = Math.min(currentMix.senior, 0.3);
+        // Calculate actual reduction considering the minimum clamp
+        const actualSeniorReduction = currentMix.senior - Math.max(0.10, currentMix.senior - Math.min(currentMix.senior, 0.3));
         targetMix = {
-          senior: Math.max(0.10, currentMix.senior - seniorReduction),
-          mid: currentMix.mid + (seniorReduction * 0.4),
-          junior: currentMix.junior + (seniorReduction * 0.6),
+          senior: Math.max(0.10, currentMix.senior - Math.min(currentMix.senior, 0.3)),
+          mid: currentMix.mid + (actualSeniorReduction * 0.4),
+          junior: currentMix.junior + (actualSeniorReduction * 0.6),
         };
 
       } else if (marginPct < 15) {
@@ -414,11 +415,14 @@ export default function TowAnalysis({
         }
 
         // Target mix: moderate reduction of senior
-        const seniorReduction = Math.min(currentMix.senior * 0.2, 0.15);
+        // Calculate actual reduction considering the minimum clamp
+        const desiredSeniorReduction = Math.min(currentMix.senior * 0.2, 0.15);
+        const actualSeniorAfterClamp = Math.max(0.20, currentMix.senior - desiredSeniorReduction);
+        const actualSeniorReductionLow = currentMix.senior - actualSeniorAfterClamp;
         targetMix = {
-          senior: Math.max(0.20, currentMix.senior - seniorReduction),
-          mid: currentMix.mid + (seniorReduction * 0.5),
-          junior: currentMix.junior + (seniorReduction * 0.5),
+          senior: actualSeniorAfterClamp,
+          mid: currentMix.mid + (actualSeniorReductionLow * 0.5),
+          junior: currentMix.junior + (actualSeniorReductionLow * 0.5),
         };
 
       } else if (marginPct >= 15 && marginPct < 25) {
@@ -446,15 +450,25 @@ export default function TowAnalysis({
 
         // Slight increase in senior for quality on important TOWs
         if (weight > 25) {
-          const seniorIncrease = Math.min(0.10, currentMix.junior * 0.3);
+          const desiredSeniorIncrease = Math.min(0.10, currentMix.junior * 0.3);
+          const actualJuniorAfterClamp = Math.max(0.10, currentMix.junior - desiredSeniorIncrease);
+          const actualSeniorIncreaseHigh = currentMix.junior - actualJuniorAfterClamp;
           targetMix = {
-            senior: currentMix.senior + seniorIncrease,
+            senior: currentMix.senior + actualSeniorIncreaseHigh,
             mid: currentMix.mid,
-            junior: Math.max(0.10, currentMix.junior - seniorIncrease),
+            junior: actualJuniorAfterClamp,
           };
         } else {
           targetMix = currentMix;
         }
+      }
+
+      // Normalize targetMix to ensure it sums to 100%
+      const mixSum = targetMix.senior + targetMix.mid + targetMix.junior;
+      if (mixSum > 0 && Math.abs(mixSum - 1.0) > 0.001) {
+        targetMix.senior = targetMix.senior / mixSum;
+        targetMix.mid = targetMix.mid / mixSum;
+        targetMix.junior = targetMix.junior / mixSum;
       }
 
       // Calculate proposed FTE from target mix

@@ -215,6 +215,7 @@ class ExportBusinessPlanRequest(BaseModel):
     tow_breakdown: Optional[Dict[str, Any]] = Field(default_factory=dict)
     lutech_breakdown: Optional[Dict[str, Any]] = Field(default_factory=dict)
     profile_rates: Optional[Dict[str, float]] = Field(default_factory=dict)
+    profile_labels: Optional[Dict[str, Dict[str, str]]] = Field(default_factory=dict)  # {full_id: {profile, practice}}
     intervals: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
 
 

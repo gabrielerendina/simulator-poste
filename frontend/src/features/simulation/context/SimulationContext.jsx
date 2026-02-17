@@ -63,6 +63,33 @@ export const SimulationProvider = ({ children }) => {
   };
 
   const setDiscount = (key, value) => {
+    // Sync logic: when Sconto Lutech >= Best Offer and user increases Sconto Lutech,
+    // Best Offer should also increase to match
+    if (key === 'myDiscount') {
+      const currentMyDiscount = state.myDiscount;
+      const currentCompetitorDiscount = state.competitorDiscount;
+
+      // If Sconto Lutech was >= Best Offer AND is being increased
+      if (currentMyDiscount >= currentCompetitorDiscount && value > currentMyDiscount) {
+        // Increase Best Offer by the same delta
+        const delta = value - currentMyDiscount;
+        const newCompetitorDiscount = Math.min(currentCompetitorDiscount + delta, 100);
+        dispatch({ type: 'SET_DISCOUNT', key: 'competitorDiscount', value: newCompetitorDiscount });
+
+        // Also clamp competitorEconDiscount if needed
+        if (state.competitorEconDiscount > newCompetitorDiscount) {
+          dispatch({ type: 'SET_DISCOUNT', key: 'competitorEconDiscount', value: newCompetitorDiscount });
+        }
+      }
+    }
+
+    // When Best Offer changes, clamp Competitor Economic Discount
+    if (key === 'competitorDiscount') {
+      if (state.competitorEconDiscount > value) {
+        dispatch({ type: 'SET_DISCOUNT', key: 'competitorEconDiscount', value: value });
+      }
+    }
+
     dispatch({ type: 'SET_DISCOUNT', key, value });
   };
 

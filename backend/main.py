@@ -2648,6 +2648,7 @@ def export_business_plan_excel(data: schemas.ExportBusinessPlanRequest, db: Sess
             scenarios=data.scenarios,
             tow_breakdown=data.tow_breakdown,
             profile_rates=data.profile_rates,
+            profile_labels=data.profile_labels,
             intervals=data.intervals,
             lutech_breakdown=data.lutech_breakdown,
         )

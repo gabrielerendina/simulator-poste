@@ -800,6 +800,7 @@ export default function BusinessPlanPage() {
         tow_breakdown: towBreakdown,
         lutech_breakdown: lutechProfileBreakdown,
         profile_rates: buildLutechRates(),
+        profile_labels: buildLutechLabels(),
         intervals: intervals,
       }, { responseType: 'blob' });
 

@@ -62,6 +62,7 @@ class BusinessPlanExcelGenerator:
                  quota_lutech: float = 1.0, scenarios: Optional[List[Dict[str, Any]]] = None,
                  tow_breakdown: Optional[Dict[str, Any]] = None,
                  profile_rates: Optional[Dict[str, float]] = None,
+                 profile_labels: Optional[Dict[str, Dict[str, str]]] = None,
                  intervals: Optional[List[Dict[str, Any]]] = None,
                  lutech_breakdown: Optional[Dict[str, Any]] = None):
 
@@ -76,6 +77,7 @@ class BusinessPlanExcelGenerator:
         self.tow_breakdown = tow_breakdown or {}
         self.lutech_breakdown = lutech_breakdown or {}
         self.profile_rates = profile_rates or {}
+        self.profile_labels = profile_labels or {}  # {full_id: {profile, practice}}
         self.intervals = intervals or []
 
         self.wb = Workbook()
@@ -324,11 +326,23 @@ class BusinessPlanExcelGenerator:
 
         # Populate from profile_rates
         for full_id, rate in sorted(self.profile_rates.items()):
-            parts = full_id.split(':')
-            label = parts[1] if len(parts) > 1 else full_id
+            # Get label from profile_labels if available, otherwise fallback to ID parsing
+            labels_info = self.profile_labels.get(full_id, {})
+            profile_label = labels_info.get('profile', '')
+            practice_label = labels_info.get('practice', '')
+
+            # Create a display label: "Practice - Profile" or just profile if no practice
+            if profile_label and practice_label:
+                display_label = f"{practice_label} - {profile_label}"
+            elif profile_label:
+                display_label = profile_label
+            else:
+                # Fallback to parsing the ID
+                parts = full_id.split(':')
+                display_label = parts[1] if len(parts) > 1 else full_id
 
             ws.cell(row=row, column=1, value=full_id).border = THIN_BORDER
-            ws.cell(row=row, column=2, value=label).border = THIN_BORDER
+            ws.cell(row=row, column=2, value=display_label).border = THIN_BORDER
 
             cell_rate = ws.cell(row=row, column=3, value=rate)
             cell_rate.number_format = '#,##0'
@@ -1780,6 +1794,7 @@ def generate_business_plan_excel(
     scenarios: Optional[List[Dict[str, Any]]] = None,
     tow_breakdown: Optional[Dict[str, Any]] = None,
     profile_rates: Optional[Dict[str, float]] = None,
+    profile_labels: Optional[Dict[str, Dict[str, str]]] = None,
     intervals: Optional[List[Dict[str, Any]]] = None,
     lutech_breakdown: Optional[Dict[str, Any]] = None,
 ) -> io.BytesIO:
@@ -1794,6 +1809,7 @@ def generate_business_plan_excel(
         scenarios=scenarios,
         tow_breakdown=tow_breakdown,
         profile_rates=profile_rates,
+        profile_labels=profile_labels,
         intervals=intervals,
         lutech_breakdown=lutech_breakdown,
     )
