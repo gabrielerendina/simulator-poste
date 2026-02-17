@@ -225,7 +225,7 @@ class BusinessPlanExcelGenerator:
         ws['A' + str(row)].font = SECTION_FONT
         row += 1
 
-        gov_pct = self.bp.get('governance_pct', 0.10)
+        gov_pct = self.bp.get('governance_pct', 0.04)
         if gov_pct > 1:
             gov_pct = gov_pct / 100
         ws['A' + str(row)] = "Governance %"
@@ -235,7 +235,7 @@ class BusinessPlanExcelGenerator:
         self.named_ranges['GOVERNANCE_PCT'] = f"PARAMETRI!$B${row}"
         row += 1
 
-        risk_pct = self.bp.get('risk_contingency_pct', 0.05)
+        risk_pct = self.bp.get('risk_contingency_pct', 0.03)
         if risk_pct > 1:
             risk_pct = risk_pct / 100
         ws['A' + str(row)] = "Risk Contingency %"

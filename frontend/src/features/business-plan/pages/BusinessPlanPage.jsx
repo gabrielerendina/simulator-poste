@@ -514,16 +514,19 @@ export default function BusinessPlanPage() {
     const durationYears = durationMonths / 12;
     const daysPerFte = bp.days_per_fte || DAYS_PER_FTE;
 
+    let baseCost = 0;
+    let meta = {};
+
     // MODE: manual
     if (mode === 'manual') {
       const val = bp.governance_cost_manual;
       if (val !== null && val !== undefined) {
-        return { value: val, meta: { method: 'manuale' } };
+        baseCost = val;
+        meta = { method: 'manuale' };
       }
     }
-
     // MODE: fte — somma costi per time slice
-    if (mode === 'fte' && (bp.governance_fte_periods || []).length > 0) {
+    else if (mode === 'fte' && (bp.governance_fte_periods || []).length > 0) {
       const lutechRates = buildLutechRates();
       let totalCost = 0;
 
@@ -546,14 +549,11 @@ export default function BusinessPlanPage() {
         totalCost += periodFte * (periodAvgRate || 0) * daysPerFte * periodYears;
       }
 
-      return {
-        value: Math.round(totalCost * 100) / 100,
-        meta: { method: 'fte', periods: bp.governance_fte_periods.length }
-      };
+      baseCost = totalCost;
+      meta = { method: 'fte', periods: bp.governance_fte_periods.length };
     }
-
     // MODE: team_mix — governance FTE * tariffa media profili
-    if (mode === 'team_mix') {
+    else if (mode === 'team_mix') {
       const totalFte = (bp.team_composition || []).reduce((sum, m) => sum + (parseFloat(m.fte) || 0), 0);
       const governanceFte = totalFte * ((bp.governance_pct || 0) / 100);
       const govMix = bp.governance_profile_mix || [];
@@ -572,20 +572,31 @@ export default function BusinessPlanPage() {
 
         if (totalPct > 0) {
           const avgRate = weightedRate / totalPct;
-          const result = governanceFte * daysPerFte * durationYears * avgRate;
-          return {
-            value: Math.round(result * 100) / 100,
-            meta: { method: 'mix_profili', fte: governanceFte, daysPerFte, years: durationYears, avgRate }
-          };
+          baseCost = governanceFte * daysPerFte * durationYears * avgRate;
+          meta = { method: 'mix_profili', fte: governanceFte, daysPerFte, years: durationYears, avgRate };
         }
       }
     }
 
     // MODE: percentage (default/fallback)
-    const result = teamCost * ((bp.governance_pct || 0) / 100);
+    if (baseCost === 0 && Object.keys(meta).length === 0) {
+      baseCost = teamCost * ((bp.governance_pct || 0) / 100);
+      meta = { method: 'percentuale_team', pct: bp.governance_pct };
+    }
+
+    // Apply reuse factor if enabled
+    let finalCost = baseCost;
+    if (bp.governance_apply_reuse && (bp.reuse_factor || 0) > 0) {
+      const reuseFactor = (bp.reuse_factor || 0) / 100; // Convert from percentage
+      finalCost = baseCost * (1 - reuseFactor);
+      meta.reuse_applied = true;
+      meta.reuse_factor = bp.reuse_factor;
+      meta.base_cost = baseCost;
+    }
+
     return {
-      value: Math.round(result * 100) / 100,
-      meta: { method: 'percentuale_team', pct: bp.governance_pct }
+      value: Math.round(finalCost * 100) / 100,
+      meta
     };
   }, [buildLutechRates]);
 

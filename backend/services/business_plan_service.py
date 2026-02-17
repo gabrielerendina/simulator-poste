@@ -410,11 +410,12 @@ class BusinessPlanService:
             {"team": ..., "governance": ..., "risk": ..., "subcontract": ..., "total": ...}
         """
         team_cost = float(bp_data.get("total_cost", 0.0))
-        governance_pct = float(bp_data.get("governance_pct", 0.10))
-        risk_pct = float(bp_data.get("risk_contingency_pct", 0.05))
+        governance_pct = float(bp_data.get("governance_pct", 0.04))
+        risk_pct = float(bp_data.get("risk_contingency_pct", 0.03))
 
         governance_cost = team_cost * governance_pct
-        risk_cost = team_cost * risk_pct
+        # Risk includes governance cost (aligned with frontend calculation)
+        risk_cost = (team_cost + governance_cost) * risk_pct
 
         # Subcontract
         sub_config = bp_data.get("subcontract_config", {})
@@ -505,8 +506,8 @@ class BusinessPlanService:
         profile_rates: Dict[str, float] = None,
         duration_months: int = 36,
         default_daily_rate: float = 250.0,
-        governance_pct: float = 0.10,
-        risk_contingency_pct: float = 0.05,
+        governance_pct: float = 0.04,
+        risk_contingency_pct: float = 0.03,
         subcontract_config: Dict[str, Any] = None,
     ) -> List[Dict[str, Any]]:
         """
@@ -558,7 +559,8 @@ class BusinessPlanService:
 
                 # Aggiungi overhead
                 governance_cost = team_cost * governance_pct
-                risk_cost = team_cost * risk_contingency_pct
+                # Risk includes governance cost (aligned with frontend calculation)
+                risk_cost = (team_cost + governance_cost) * risk_contingency_pct
                 sub_quota = float((subcontract_config or {}).get("quota_pct", 0.0))
                 subcontract_cost = team_cost * sub_quota
 

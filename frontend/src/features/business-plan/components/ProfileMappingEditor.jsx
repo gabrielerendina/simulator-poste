@@ -785,6 +785,70 @@ export default function ProfileMappingEditor({
               </div>
             </div>
           </div>
+
+          {/* Formula Explanation - Step by Step */}
+          <details className="mt-4 group">
+            <summary className="flex items-center gap-2 cursor-pointer text-sm text-indigo-600 hover:text-indigo-700 font-medium select-none">
+              <Info className="w-4 h-4" />
+              <span>Come viene calcolato il costo medio?</span>
+              <ChevronDown className="w-4 h-4 ml-1 group-open:rotate-180 transition-transform" />
+            </summary>
+            <div className="mt-3 p-4 bg-white rounded-xl border border-indigo-100 text-sm space-y-3">
+              <div className="font-bold text-slate-700 border-b pb-2 mb-3">Formula COSTO MEDIO €/GIORNO</div>
+
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                  <div>
+                    <div className="font-semibold text-slate-700">Per ogni profilo Poste mappato:</div>
+                    <div className="text-slate-600 mt-1">
+                      <code className="bg-slate-100 px-2 py-0.5 rounded text-xs">
+                        tariffa_periodo = Σ(tariffa_Lutech × peso%) ÷ Σpeso%
+                      </code>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Esempio: 60% Senior (€350/gg) + 40% Manager (€450/gg) = (350×0.6 + 450×0.4) ÷ 1.0 = €390/gg
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                  <div>
+                    <div className="font-semibold text-slate-700">Media pesata per FTE:</div>
+                    <div className="text-slate-600 mt-1">
+                      <code className="bg-slate-100 px-2 py-0.5 rounded text-xs">
+                        costo_pesato = Σ(tariffa_profilo × FTE_profilo)
+                      </code>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Esempio: PM 2 FTE × €400/gg + DEV 5 FTE × €350/gg = €2,550
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                  <div>
+                    <div className="font-semibold text-slate-700">Costo medio finale:</div>
+                    <div className="text-slate-600 mt-1">
+                      <code className="bg-slate-100 px-2 py-0.5 rounded text-xs">
+                        COSTO_MEDIO = costo_pesato ÷ FTE_mappati
+                      </code>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Esempio: €2,550 ÷ 7 FTE = <strong>€364/gg</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-3 mt-3 text-xs text-slate-500">
+                <strong>Nota:</strong> Solo i profili con mappatura Lutech completa (100%) contribuiscono al calcolo.
+                FTE non mappati: {(overallTeamMixRate.totalFte - overallTeamMixRate.mappedFte).toFixed(1)}
+              </div>
+            </div>
+          </details>
         </div>
       )}
     </div>

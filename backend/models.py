@@ -120,8 +120,8 @@ class BusinessPlanModel(Base):
     start_month = Column(Integer, nullable=True, default=None)  # Mese inizio contratto (1-12)
     days_per_fte = Column(Float, default=220.0)
     default_daily_rate = Column(Float, default=250.0)
-    governance_pct = Column(Float, default=0.10)
-    risk_contingency_pct = Column(Float, default=0.05)
+    governance_pct = Column(Float, default=0.04)
+    risk_contingency_pct = Column(Float, default=0.03)
 
     # Da capitolato Poste (JSON)
     # [{profile_id, label, fte, days_year, tow_allocation: {tow_id: pct}}]

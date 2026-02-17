@@ -1969,7 +1969,7 @@ async def verify_certs_upload(
             expected_certs_map = {}
             if lot_key:
                 from models import LotConfigModel
-                lot_config = db.query(LotConfigModel).filter(LotConfigModel.key == lot_key).first()
+                lot_config = db.query(LotConfigModel).filter(LotConfigModel.name == lot_key).first()
                 if lot_config and lot_config.requirements_config:
                     for req in lot_config.requirements_config:
                         req_code = req.get("codice_requisito", "")
@@ -2053,7 +2053,7 @@ async def verify_certs_upload_stream(
     expected_certs_map = {}
     if lot_key:
         from models import LotConfigModel
-        lot_config = db.query(LotConfigModel).filter(LotConfigModel.key == lot_key).first()
+        lot_config = db.query(LotConfigModel).filter(LotConfigModel.name == lot_key).first()
         if lot_config and lot_config.requirements_config:
             for req in lot_config.requirements_config:
                 req_code = req.get("codice_requisito", "")
@@ -2433,7 +2433,7 @@ def calculate_business_plan(
     elif bp.governance_profile_mix and len(bp.governance_profile_mix) > 0:
         # Calculate based on governance FTE and profile mix
         total_fte = sum(float(m.get("fte", 0)) for m in (bp.team_composition or []))
-        governance_pct = bp.governance_pct or 0.10
+        governance_pct = bp.governance_pct or 0.04
         governance_fte = total_fte * governance_pct
         duration_months = bp.duration_months or 36
         duration_years = duration_months / 12
@@ -2453,9 +2453,15 @@ def calculate_business_plan(
             governance_cost = governance_fte * days_per_fte * duration_years * avg_rate
     else:
         # Fallback: percentage of team cost
-        governance_cost = team_cost * (bp.governance_pct or 0.10)
+        governance_cost = team_cost * (bp.governance_pct or 0.04)
 
-    risk_cost = team_cost * (bp.risk_contingency_pct or 0.05)
+    # Apply reuse factor to governance if enabled
+    if bp.governance_apply_reuse and (bp.reuse_factor or 0) > 0:
+        reuse_factor = bp.reuse_factor or 0
+        governance_cost = governance_cost * (1 - reuse_factor)
+
+    # Risk includes governance cost (aligned with frontend calculation)
+    risk_cost = (team_cost + governance_cost) * (bp.risk_contingency_pct or 0.03)
 
     # Subcontract
     sub_config = bp.subcontract_config or {}
@@ -2548,8 +2554,8 @@ def get_business_plan_scenarios(lot_key: str, db: Session = Depends(get_db)):
         profile_rates=profile_rates if bp.team_composition else {},
         duration_months=bp.duration_months or 36,
         default_daily_rate=bp.default_daily_rate or 250.0,
-        governance_pct=bp.governance_pct or 0.10,
-        risk_contingency_pct=bp.risk_contingency_pct or 0.05,
+        governance_pct=bp.governance_pct or 0.04,
+        risk_contingency_pct=bp.risk_contingency_pct or 0.03,
         subcontract_config=bp.subcontract_config or {},
     )
     return {"scenarios": scenarios}

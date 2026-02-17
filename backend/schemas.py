@@ -366,8 +366,8 @@ class BusinessPlanCreate(BaseModel):
     start_month: Optional[int] = Field(default=None, ge=1, le=12, description="Mese inizio contratto (1-12)")
     days_per_fte: float = 220.0
     default_daily_rate: float = 250.0
-    governance_pct: float = Field(default=0.10, ge=0.0, le=1.0)  # Decimali 0-1 (frontend invia /100)
-    risk_contingency_pct: float = Field(default=0.05, ge=0.0, le=1.0)  # Decimali 0-1 (frontend invia /100)
+    governance_pct: float = Field(default=0.04, ge=0.0, le=1.0)  # Decimali 0-1 (frontend invia /100)
+    risk_contingency_pct: float = Field(default=0.03, ge=0.0, le=1.0)  # Decimali 0-1 (frontend invia /100)
     team_composition: List[Dict[str, Any]] = Field(default_factory=list)
     tows: List[Dict[str, Any]] = Field(default_factory=list)
     volume_adjustments: Dict[str, Any] = Field(default_factory=dict)
@@ -474,8 +474,8 @@ class BusinessPlanResponse(BaseModel):
     start_month: Optional[int] = None
     days_per_fte: float = 220.0
     default_daily_rate: float = 250.0
-    governance_pct: float = 0.10
-    risk_contingency_pct: float = 0.05
+    governance_pct: float = 0.04
+    risk_contingency_pct: float = 0.03
     team_composition: List[Dict[str, Any]] = Field(default_factory=list)
     tows: List[Dict[str, Any]] = Field(default_factory=list)
     volume_adjustments: Dict[str, Any] = Field(default_factory=dict)
