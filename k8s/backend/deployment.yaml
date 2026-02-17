@@ -34,6 +34,8 @@ spec:
         env:
         - name: DATABASE_URL
           value: "sqlite:////data/simulator_poste.db"
+        - name: DB_PATH
+          value: "/data/simulator_poste.db"
         - name: ENVIRONMENT
           valueFrom:
             configMapKeyRef:
