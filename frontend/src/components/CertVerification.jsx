@@ -112,9 +112,7 @@ export default function CertVerification({ onClose }) {
         params.req_filter = reqFilter.trim();
       }
 
-      console.log('[CertVerification] Sending request to:', `${API_URL}/verify-certs`, params);
       const res = await axios.post(`${API_URL}/verify-certs`, null, { params });
-      console.log('[CertVerification] Response:', res.data);
       setResults(res.data);
     } catch (err) {
       console.error('[CertVerification] Error:', err);
@@ -148,7 +146,6 @@ export default function CertVerification({ onClose }) {
       }
 
       const url = `${API_URL}/verify-certs/upload${params.toString() ? '?' + params.toString() : ''}`;
-      console.log('[CertVerification] Uploading ZIP to:', url);
 
       const res = await axios.post(url, formData, {
         headers: {
@@ -160,7 +157,6 @@ export default function CertVerification({ onClose }) {
         },
       });
 
-      console.log('[CertVerification] Upload response:', res.data);
       setResults(res.data);
       setUploadProgress(null);
     } catch (err) {

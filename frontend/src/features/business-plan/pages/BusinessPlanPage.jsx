@@ -39,7 +39,7 @@ import {
 
 
 
-import { DEFAULT_DAILY_RATE, DAYS_PER_FTE } from '../constants';
+import { DEFAULT_DAILY_RATE, DAYS_PER_FTE, SCENARIO_PARAMS } from '../constants';
 
 export default function BusinessPlanPage() {
   const { t } = useTranslation();
@@ -605,13 +605,7 @@ export default function BusinessPlanPage() {
   const generateScenarios = useCallback((bp, effectiveBase, currentCost) => {
     if (!effectiveBase || !currentCost) return [];
 
-    const scenarioParams = [
-      { name: 'Conservativo', reuse: 5, profileReduction: 0.95 },
-      { name: 'Bilanciato', reuse: 15, profileReduction: 0.90 },
-      { name: 'Aggressivo', reuse: 30, profileReduction: 0.85 },
-    ];
-
-    return scenarioParams.map(({ name, reuse, profileReduction }) => {
+    return SCENARIO_PARAMS.map(({ name, reuse, profileReduction }) => {
       const neutralVolAdj = { periods: [{ month_start: 1, month_end: bp.duration_months || 36, by_tow: {}, by_profile: {} }] };
 
       const team = bp.team_composition || [];
