@@ -10,7 +10,7 @@ import MasterDataConfig from './components/MasterDataConfig';
 import CertVerificationPage from './components/CertVerificationPage';
 import BusinessPlanPage from './features/business-plan/pages/BusinessPlanPage';
 import { BusinessPlanProvider } from './features/business-plan/context/BusinessPlanContext';
-import { Settings, Menu, Save, Briefcase, Sun, Moon } from 'lucide-react';
+import { Settings, Menu, Save } from 'lucide-react';
 import { logger } from './utils/logger';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -20,30 +20,16 @@ import { SimulationProvider, useSimulation } from './features/simulation/context
 import { ToastProvider, useToast } from './shared/components/ui/Toast';
 import { API_URL } from './utils/api';
 
-/* ─── Dark mode hook ──────────────────────────────────────────────────────── */
-function useDarkMode() {
-  const [isDark, setIsDark] = useState(() => {
-    try {
-      const saved = localStorage.getItem('theme');
-      if (saved) return saved === 'dark';
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    } catch { return false; }
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch { /* noop */ }
-  }, [isDark]);
-
-  return [isDark, () => setIsDark(d => !d)];
-}
-
 // Main app content (to be wrapped with auth)
 function AppContent() {
   const { getAccessToken, handleCallback, isAuthenticated, isLoading: authLoading } = useAuth();
   const { t } = useTranslation();
   const { success, error: showError } = useToast();
-  const [isDark, toggleDark] = useDarkMode();
+  // Force light mode — dark mode toggle hidden for now
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    try { localStorage.setItem('theme', 'light'); } catch { /* noop */ }
+  }, []);
 
   // Use contexts instead of local state
   const { config, loading: configLoading, updateConfig, refetch: refetchConfig } = useConfig();
@@ -319,7 +305,7 @@ function AppContent() {
         />
       </div>
 
-      <main className="flex-1 flex flex-col h-full overflow-hidden">
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
         {/* Demo mode banner */}
         {mockMode && (
           <div className="bg-yellow-100 border-b border-yellow-300 px-4 py-2 text-center">
@@ -373,14 +359,6 @@ function AppContent() {
                 <span className="hidden md:inline">{t('sidebar.config_btn')}</span>
               </button>
               <button
-                onClick={() => setView('businessPlan')}
-                className={`flex items-center gap-2 px-2 md:px-4 py-2 rounded-xl transition-all font-medium text-sm ${view === 'businessPlan' ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
-                aria-label={t('business_plan.title')}
-              >
-                <Briefcase className="w-4 h-4" />
-                <span className="hidden md:inline">{t('business_plan.title')}</span>
-              </button>
-              <button
                 onClick={() => setView('master')}
                 className={`hidden sm:flex items-center gap-2 px-2 md:px-4 py-2 rounded-xl transition-all font-medium text-sm ${view === 'master' ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
                 aria-label={t('common.master_data')}
@@ -395,18 +373,6 @@ function AppContent() {
               >
                 <Save className="w-4 h-4" />
                 <span className="hidden md:inline">{t('common.save')}</span>
-              </button>
-              {/* Dark / Light mode toggle */}
-              <button
-                onClick={toggleDark}
-                className="p-2 rounded-xl transition-all hover:bg-black/10"
-                aria-label={isDark ? t('app.theme_light') : t('app.theme_dark')}
-                title={isDark ? t('app.theme_light') : t('app.theme_dark')}
-              >
-                {isDark
-                  ? <Sun className="w-5 h-5 text-amber-400" />
-                  : <Moon className="w-5 h-5 text-slate-500" />
-                }
               </button>
               <LogoutButton />
             </div>
