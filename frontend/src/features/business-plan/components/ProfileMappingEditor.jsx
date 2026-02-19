@@ -464,7 +464,7 @@ export default function ProfileMappingEditor({
 
   if (teamComposition.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center text-slate-500">
+      <div className="glass-card rounded-2xl p-8 text-center text-slate-500">
         <ArrowRightLeft className="w-10 h-10 text-slate-300 mb-3 mx-auto" />
         <p className="font-medium">Nessun profilo da mappare</p>
         <p className="text-sm">Inserisci prima la composizione team da capitolato Poste</p>
@@ -473,7 +473,7 @@ export default function ProfileMappingEditor({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+    <div className="glass-card rounded-2xl">
       {/* Header */}
       <div className="p-4 border-b border-slate-100 flex items-center gap-3">
         <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">

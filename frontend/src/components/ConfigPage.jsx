@@ -362,7 +362,7 @@ export default function ConfigPage({ onAddLot, onDeleteLot }) {
     if (!selectedLot || !currentLot) return <div className="p-10 text-center">{t('config.no_config')}</div>;
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6 overflow-auto pb-32">
+        <div className="min-h-screen p-6 overflow-auto pb-32">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8">
@@ -373,7 +373,7 @@ export default function ConfigPage({ onAddLot, onDeleteLot }) {
                 </div>
 
                 {/* Gara/Lotto Selector & Metadata */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <div className="glass-card rounded-xl p-6 mb-6">
                     <LotSelector
                         config={editedConfig}
                         selectedLot={selectedLot}
@@ -600,7 +600,7 @@ export default function ConfigPage({ onAddLot, onDeleteLot }) {
                 />
 
                 {/* Economic Formula */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <div className="glass-card rounded-xl p-6 mb-6">
                     <div className="flex items-center gap-2 mb-6">
                         <TrendingUp className="w-5 h-5 text-amber-600" />
                         <h2 className="text-lg font-semibold text-slate-800">Formula Scoring Economico</h2>
@@ -655,7 +655,7 @@ export default function ConfigPage({ onAddLot, onDeleteLot }) {
                         </div>
 
                         {/* Formula Display with Dynamic Values */}
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
+                        <div className="glass-card rounded-xl p-6">
                             <h3 className="text-sm font-bold text-slate-700 uppercase mb-4 tracking-wider">📐 Formula Dinamica</h3>
                             <div className="bg-white rounded-lg p-4 border border-slate-200 font-mono text-sm text-slate-800 leading-relaxed space-y-3">
                                 {(() => {
@@ -691,7 +691,7 @@ export default function ConfigPage({ onAddLot, onDeleteLot }) {
                 </div>
 
                 {/* Requirements with Tabs */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="glass-card rounded-xl p-6">
                     <div className="flex items-center gap-2 mb-6">
                         <Award className="w-5 h-5 text-slate-500" />
                         <h2 className="text-lg font-semibold text-slate-800">Requisiti Tecnici</h2>

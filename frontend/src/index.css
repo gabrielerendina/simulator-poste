@@ -218,6 +218,64 @@ body {
 [data-theme="dark"] .border-emerald-100 { border-color: rgba(5, 150, 105, 0.25) !important; }
 [data-theme="dark"] .border-emerald-200 { border-color: rgba(5, 150, 105, 0.40) !important; }
 
+/* ─── iOS-style content card ──────────────────────────────────────────────── */
+/*
+ * .glass-card        — frosted panel for content cards (rounded-2xl containers)
+ * .glass-card-header — section header inside a glass-card (border-b included)
+ *
+ * Lighter blur than .glass (20px vs 28px) — still iOS quality, but lets
+ * stacked panels layer without visual noise.
+ */
+.glass-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 4px 24px rgba(15, 23, 42, 0.08),
+    0 1px 4px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transition:
+    background 0.45s ease,
+    border-color 0.45s ease,
+    box-shadow 0.45s ease;
+}
+
+[data-theme="dark"] .glass-card {
+  background: rgba(12, 20, 44, 0.78);
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Section header inside a glass-card — only sets background.
+   Keep Tailwind border-b + border-slate-100 in markup for border control. */
+.glass-card-header {
+  background: rgba(255, 255, 255, 0.40);
+  transition: background 0.45s ease;
+}
+
+[data-theme="dark"] .glass-card-header {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Tab navigation bar — standalone glass pill */
+.glass-tab-bar {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.90);
+  transition: background 0.45s ease;
+}
+
+[data-theme="dark"] .glass-tab-bar {
+  background: rgba(12, 20, 44, 0.75);
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
 /* ─── Custom Range Slider ─────────────────────────────────────────────────── */
 input[type="range"] {
   cursor: pointer;

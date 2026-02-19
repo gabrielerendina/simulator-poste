@@ -136,9 +136,9 @@ export default function TowConfigTable({
   const hasAdjustments = Object.keys(adjustedQtyMap).length > 0;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="glass-card rounded-2xl overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-slate-100">
+      <div className="p-4 border-b border-slate-100 glass-card-header">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">

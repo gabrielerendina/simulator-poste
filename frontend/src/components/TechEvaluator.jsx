@@ -52,7 +52,7 @@ export default function TechEvaluator() {
     // Guard clause - return early if no lotData
     if (!lotData) {
         return (
-            <div className="bg-white rounded-lg border border-slate-200 p-6">
+            <div className="glass-card rounded-lg p-6">
                 <div className="animate-pulse">
                     <div className="h-6 bg-slate-200 rounded w-3/4 mb-4"></div>
                     <div className="h-4 bg-slate-200 rounded w-1/2 mb-2"></div>
@@ -126,7 +126,7 @@ export default function TechEvaluator() {
         <div className="space-y-6 pb-12">
 
             {/* 1. Company Certifications */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="glass-card rounded-xl overflow-hidden">
                 <button
                     onClick={() => toggleSection('companyCerts')}
                     className="w-full px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 hover:bg-slate-100 transition-colors"
@@ -177,7 +177,7 @@ export default function TechEvaluator() {
             </div>
 
             {/* 2. Professional Certs */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="glass-card rounded-xl overflow-hidden">
                 <button
                     onClick={() => toggleSection('profCerts')}
                     className="w-full px-6 py-4 border-b border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors flex justify-between items-center"
@@ -461,7 +461,7 @@ export default function TechEvaluator() {
             </div>
 
             {/* 3. Projects & Refs */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="glass-card rounded-xl overflow-hidden">
                 <button
                     onClick={() => toggleSection('projectRefs')}
                     className="w-full px-6 py-4 border-b border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors flex justify-between items-center"

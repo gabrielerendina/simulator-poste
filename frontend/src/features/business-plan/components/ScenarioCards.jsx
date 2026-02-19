@@ -83,8 +83,8 @@ export default function ScenarioCards({
 
   if (!scenarios || scenarios.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-        <div className="p-4 border-b border-slate-100">
+      <div className="glass-card rounded-2xl">
+        <div className="p-4 border-b border-slate-100 glass-card-header">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-orange-600" />
@@ -108,9 +108,9 @@ export default function ScenarioCards({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+    <div className="glass-card rounded-2xl">
       {/* Header */}
-      <div className="p-4 border-b border-slate-100">
+      <div className="p-4 border-b border-slate-100 glass-card-header">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">

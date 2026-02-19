@@ -1231,7 +1231,7 @@ export default function BusinessPlanPage() {
   const offerScheme = calculateOfferData();
 
   return (
-    <div className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50">
+    <div className="flex-1 overflow-auto p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -1308,7 +1308,7 @@ export default function BusinessPlanPage() {
         )}
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-200 bg-white rounded-t-xl">
+        <div className="glass-tab-bar flex rounded-2xl">
           {[
             { id: 'poste', label: 'Poste', icon: MailCheck, desc: 'Requisiti e volumi' },
             { id: 'lutech', label: 'Lutech', icon: Users, desc: 'Team, costi e parametri' },
@@ -1360,8 +1360,8 @@ export default function BusinessPlanPage() {
               />
 
               {/* Parametri Poste: Durata + Rettifica Volumi */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-                <div className="p-4 border-b border-slate-100">
+              <div className="glass-card rounded-2xl">
+                <div className="p-4 glass-card-header">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
                       <Calendar className="w-5 h-5 text-orange-600" />

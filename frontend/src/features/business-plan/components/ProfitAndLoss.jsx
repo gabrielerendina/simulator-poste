@@ -109,7 +109,7 @@ export default function ProfitAndLoss({
 
   if (!baseAmount) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center text-slate-500">
+      <div className="glass-card rounded-2xl p-8 text-center text-slate-500">
         <Receipt className="w-10 h-10 mx-auto mb-3 text-slate-300" />
         <p className="font-medium">Conto Economico</p>
         <p className="text-sm mt-1">Configura l'importo base d'asta del lotto per visualizzare il P&L</p>
@@ -118,9 +118,9 @@ export default function ProfitAndLoss({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+    <div className="glass-card rounded-2xl">
       {/* Header */}
-      <div className="p-4 border-b border-slate-100">
+      <div className="p-4 border-b border-slate-100 glass-card-header">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">

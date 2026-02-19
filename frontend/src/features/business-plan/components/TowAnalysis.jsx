@@ -576,7 +576,7 @@ export default function TowAnalysis({
   return (
     <div className="space-y-6">
       {/* Section 1: Margin per TOW */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="glass-card rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -672,7 +672,7 @@ export default function TowAnalysis({
       </div>
 
       {/* Section 2: Concentrazione Senior/Junior */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="glass-card rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-purple-50 to-pink-50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -765,7 +765,7 @@ export default function TowAnalysis({
 
       {/* Section 3: Risks */}
       {risks.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="glass-card rounded-2xl overflow-hidden">
           <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-red-50 to-orange-50">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
@@ -811,7 +811,7 @@ export default function TowAnalysis({
 
       {/* Section 4: Resource Mix Proposals per TOW */}
       {resourceMixProposals.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="glass-card rounded-2xl overflow-hidden">
           <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-purple-50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1090,7 +1090,7 @@ export default function TowAnalysis({
 
       {/* Section 5: Optimization Proposals */}
       {optimizationProposals.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="glass-card rounded-2xl overflow-hidden">
           <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-green-50 to-emerald-50">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">

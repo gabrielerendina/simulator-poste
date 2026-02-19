@@ -236,7 +236,7 @@ export default function Dashboard({ onNavigate }) {
             />
 
             {/* Strategic Analysis (Monte Carlo) */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 overflow-hidden relative">
+            <div className="glass-card rounded-xl p-6 overflow-hidden relative">
                 <div className="relative z-10">
                     {/* Competitor Inputs for Optimizer */}
                     <div className="mb-6 pb-6 border-b border-slate-100">
@@ -457,7 +457,7 @@ export default function Dashboard({ onNavigate }) {
 
 
             {/* 3. Detailed Score Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="glass-card rounded-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                     <h3 className="font-semibold text-slate-800">{t('dashboard.detail_table')}</h3>
                     <div className="flex gap-2">
