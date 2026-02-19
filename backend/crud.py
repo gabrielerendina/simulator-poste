@@ -525,6 +525,7 @@ def create_business_plan(
         governance_apply_reuse=data.governance_apply_reuse,
         margin_warning_threshold=data.margin_warning_threshold,
         margin_success_threshold=data.margin_success_threshold,
+        inflation_pct=data.inflation_pct,
     )
     db.add(db_bp)
     db.commit()
@@ -566,6 +567,7 @@ def update_business_plan(
     db_bp.governance_apply_reuse = data.governance_apply_reuse
     db_bp.margin_warning_threshold = data.margin_warning_threshold
     db_bp.margin_success_threshold = data.margin_success_threshold
+    db_bp.inflation_pct = data.inflation_pct
 
     db.commit()
     db.refresh(db_bp)
