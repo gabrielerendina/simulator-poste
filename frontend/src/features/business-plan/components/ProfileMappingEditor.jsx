@@ -288,7 +288,7 @@ export default function ProfileMappingEditor({
     });
   };
 
-  const formatCurrency = (val) => `€${val.toFixed(0)}`;
+  const formatCurrency = (val) => `€${val.toFixed(2)}`;
 
   // Compute per-profile adjusted FTE from volume adjustments (Integrated: Profile + Reuse + TOW)
   const profileAdjustments = useMemo(() => {

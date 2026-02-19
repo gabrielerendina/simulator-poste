@@ -122,10 +122,11 @@ export default function MarginSimulator({
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
       currency: 'EUR',
-      maximumFractionDigits: 0
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(val);
   };
-  
+
   const sliderMax = Math.max(50, parseFloat(localDiscount) || 0);
 
   return (

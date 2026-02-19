@@ -64,7 +64,8 @@ export default function ProfitAndLoss({
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
       currency: 'EUR',
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(val);
   };
 
@@ -268,7 +269,8 @@ function Row({ label, value, negative = false, bold = false }) {
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
       currency: 'EUR',
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(Math.abs(val));
   };
 

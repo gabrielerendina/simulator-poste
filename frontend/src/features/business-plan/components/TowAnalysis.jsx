@@ -568,7 +568,7 @@ export default function TowAnalysis({
   }, [resourceMixProposals]);
 
   const formatCurrency = (val) => {
-    return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
+    return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
   };
 
   const formatPercent = (val) => `${val.toFixed(1)}%`;
