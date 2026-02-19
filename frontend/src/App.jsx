@@ -223,9 +223,6 @@ function AppContent() {
     // Additional guard: ensure we have valid data from config
     if (!config[selectedLot] || baseAmount <= 0) return;
 
-    // Skip calculation during state load to avoid 499 race condition at startup
-    if (isLoadingState.current) return;
-
     const controller = new AbortController();
 
     const payload = {
