@@ -49,6 +49,9 @@ def migrate_database(db_path):
         migrations.append(('business_plans', 'governance_fte_periods', 'TEXT DEFAULT "[]"', 'Time slices per governance FTE'))
         migrations.append(('business_plans', 'governance_apply_reuse', 'INTEGER DEFAULT 0', 'Flag: applicare riuso alla governance'))
 
+        # Migrazione: Inflation YoY
+        migrations.append(('business_plans', 'inflation_pct', 'REAL DEFAULT 0.0', 'Inflazione annua % YoY sulle tariffe Lutech'))
+
         # Applica migrazioni
         added_count = 0
         for table, column_name, column_type, description in migrations:

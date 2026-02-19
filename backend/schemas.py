@@ -418,6 +418,13 @@ class BusinessPlanCreate(BaseModel):
         le=1.0,
         description="Soglia sopra la quale il margine è buono (default 15%)"
     )
+    # Inflazione annua YoY applicata alle tariffe Lutech
+    inflation_pct: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=100.0,
+        description="Inflazione annua % applicata alle tariffe Lutech (es. 3.0 = 3% YoY)"
+    )
 
     @model_validator(mode='after')
     def validate_profile_mappings_periods(self):
@@ -491,6 +498,7 @@ class BusinessPlanResponse(BaseModel):
     governance_apply_reuse: bool = False
     margin_warning_threshold: float = 0.05
     margin_success_threshold: float = 0.15
+    inflation_pct: float = 0.0
     # NOTA: tow_costs, tow_prices, total_cost, total_price, margin_pct rimossi
     # Questi valori sono ora calcolati dinamicamente dall'endpoint /calculate
 

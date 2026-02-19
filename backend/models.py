@@ -195,6 +195,8 @@ class BusinessPlanModel(Base):
     # margin_success_threshold: soglia sopra la quale il margine è considerato buono (default 15%)
     margin_warning_threshold = Column(Float, default=0.05)  # 5%
     margin_success_threshold = Column(Float, default=0.15)  # 15%
+    # Inflazione annua YoY applicata alle tariffe Lutech (es. 3.0 = 3%)
+    inflation_pct = Column(Float, default=0.0)
 
     # NOTA: I campi tow_costs, tow_prices, total_cost, total_price, margin_pct
     # sono stati rimossi perché ora calcolati dinamicamente da calculate_team_cost()

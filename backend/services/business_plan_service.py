@@ -112,6 +112,7 @@ class BusinessPlanService:
         profile_rates: Dict[str, float],
         duration_months: int,
         default_daily_rate: float = 250.0,
+        inflation_pct: float = 0.0,
     ) -> Dict[str, Any]:
         """
         Calcola il costo del team basato su un motore ad intervalli mensili (alta precisione).
@@ -202,6 +203,10 @@ class BusinessPlanService:
                 # Parametri attivabili
                 adj_period = get_adj_period_at(start)
                 p_factor = adj_period.get("by_profile", {}).get(poste_profile_id, 1.0)
+
+                # YoY inflation: year 0 = no change, year 1 = +inflation_pct%, etc.
+                year_index = (start - 1) // 12
+                inflation_factor = (1 + inflation_pct / 100) ** year_index if inflation_pct > 0 else 1.0
                 
                 # Calcolo TOW factor per questo membro in questo intervallo
                 tow_factor = 1.0
@@ -231,9 +236,9 @@ class BusinessPlanService:
                 interval_cost = 0.0
 
                 if not mix:
-                    # Fallback default
-                    rate = profile_rates.get(poste_profile_id, default_daily_rate)
-                    
+                    # Fallback default — apply YoY inflation escalation
+                    rate = profile_rates.get(poste_profile_id, default_daily_rate) * inflation_factor
+
                     # WYSIWYG: Round days to 2 decimals BEFORE cost
                     l_days_eff = round(interval_days, 2)
                     l_cost = l_days_eff * rate
@@ -280,7 +285,7 @@ class BusinessPlanService:
                     for mix_item in mix:
                         lutech_id = mix_item.get("lutech_profile") if isinstance(mix_item, dict) else getattr(mix_item, "lutech_profile")
                         pct = (mix_item.get("pct") if isinstance(mix_item, dict) else getattr(mix_item, "pct")) / 100.0
-                        rate = profile_rates.get(lutech_id, default_daily_rate)
+                        rate = profile_rates.get(lutech_id, default_daily_rate) * inflation_factor
                         
                         # WYSIWYG: Round days per profile
                         mix_days_raw = interval_raw_days * pct

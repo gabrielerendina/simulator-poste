@@ -148,6 +148,7 @@ export default function BusinessPlanPage() {
         governance_mode: 'percentage',
         governance_fte_periods: [],
         governance_apply_reuse: false,
+        inflation_pct: 0,
       });
     }
   }, [businessPlan, selectedLot]);
@@ -169,6 +170,7 @@ export default function BusinessPlanPage() {
     const durationMonths = bp.duration_months || 36;
     const daysPerFte = bp.days_per_fte || DAYS_PER_FTE;
     const defaultRate = bp.default_daily_rate || DEFAULT_DAILY_RATE;
+    const inflationPct = bp.inflation_pct ?? 0;
 
     const lutechRates = buildLutechRates();
     const lutechLabels = buildLutechLabels(); // Map for Lutech profile labels from practices
@@ -270,6 +272,11 @@ export default function BusinessPlanPage() {
         const rate = getProfileRateAtMonth(profileId, start);
         const mix = getLutechMixAtMonth(profileId, start);
 
+        // YoY inflation escalation: year 0 = no change, year 1 = +inflationPct%, etc.
+        const yearIndex = Math.floor((start - 1) / 12);
+        const inflationFactor = inflationPct > 0 ? Math.pow(1 + inflationPct / 100, yearIndex) : 1;
+        const escalatedRate = rate * inflationFactor;
+
         // TOW Reduction for this member in this interval
         const adjustmentPeriod = getAdjustmentPeriodAtMonth(start);
         const towAllocation = member.tow_allocation || {};
@@ -288,7 +295,7 @@ export default function BusinessPlanPage() {
         const intervalRawDays = fte * daysPerFte * years; // Raw GG before any factor
         const intervalBaseDays = intervalRawDays * factor; // After profile factor
         const intervalDays = intervalBaseDays * (reuseFactor * finalTowFactor); // Effective GG
-        const intervalCost = intervalDays * rate;
+        const intervalCost = intervalDays * escalatedRate;
 
         // Record interval for Excel
         intervals.push({
@@ -297,7 +304,7 @@ export default function BusinessPlanPage() {
           end_month: end,
           fte_base: fte,
           fte_factor: factor * reuseFactor * finalTowFactor,
-          rate: rate,
+          rate: escalatedRate,
           cost: intervalCost,
           days: intervalDays
         });
@@ -307,7 +314,7 @@ export default function BusinessPlanPage() {
           for (const m of mix) {
             if (!m.lutech_profile) continue;
             const pct = (m.pct || 0) / 100;
-            const lRate = lutechRates[m.lutech_profile] || defaultRate;
+            const lRate = (lutechRates[m.lutech_profile] || defaultRate) * inflationFactor;
 
             // WYSIWYG Rounding: round effective days at the most granular level
             const lDaysRaw = intervalRawDays * pct;
@@ -513,6 +520,7 @@ export default function BusinessPlanPage() {
     const durationMonths = bp.duration_months || 36;
     const durationYears = durationMonths / 12;
     const daysPerFte = bp.days_per_fte || DAYS_PER_FTE;
+    const inflationPct = bp.inflation_pct ?? 0;
 
     let baseCost = 0;
     let meta = {};
@@ -546,7 +554,11 @@ export default function BusinessPlanPage() {
         }
         if (totalPct > 0) periodAvgRate = periodAvgRate / totalPct;
 
-        totalCost += periodFte * (periodAvgRate || 0) * daysPerFte * periodYears;
+        // YoY inflation: escalate based on the period's start year
+        const periodYearIndex = Math.floor(((period.month_start || 1) - 1) / 12);
+        const periodInflationFactor = inflationPct > 0 ? Math.pow(1 + inflationPct / 100, periodYearIndex) : 1;
+
+        totalCost += periodFte * (periodAvgRate || 0) * periodInflationFactor * daysPerFte * periodYears;
       }
 
       baseCost = totalCost;
@@ -572,7 +584,21 @@ export default function BusinessPlanPage() {
 
         if (totalPct > 0) {
           const avgRate = weightedRate / totalPct;
-          baseCost = governanceFte * daysPerFte * durationYears * avgRate;
+          if (inflationPct > 0) {
+            // Year-by-year escalation for team_mix (compound per anno solare)
+            let inflatedCost = 0;
+            const totalYears = Math.ceil(durationMonths / 12);
+            for (let yr = 0; yr < totalYears; yr++) {
+              const yrStartMonth = yr * 12 + 1;
+              const yrEndMonth = Math.min((yr + 1) * 12, durationMonths);
+              const yrFraction = (yrEndMonth - yrStartMonth + 1) / 12;
+              const yrInflationFactor = Math.pow(1 + inflationPct / 100, yr);
+              inflatedCost += governanceFte * daysPerFte * yrFraction * avgRate * yrInflationFactor;
+            }
+            baseCost = inflatedCost;
+          } else {
+            baseCost = governanceFte * daysPerFte * durationYears * avgRate;
+          }
           meta = { method: 'mix_profili', fte: governanceFte, daysPerFte, years: durationYears, avgRate };
         }
       }
@@ -1538,6 +1564,7 @@ export default function BusinessPlanPage() {
                   governance_mode: localBP.governance_mode || 'percentage',
                   governance_fte_periods: localBP.governance_fte_periods || [],
                   governance_apply_reuse: localBP.governance_apply_reuse || false,
+                  inflation_pct: localBP.inflation_pct ?? 0,
                 }}
                 practices={practices}
                 totalTeamFte={(localBP.team_composition || []).reduce((sum, m) => sum + (parseFloat(m.fte) || 0), 0)}

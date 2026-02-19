@@ -2415,7 +2415,8 @@ def calculate_business_plan(
             profile_mappings=bp.profile_mappings or {},
             profile_rates=profile_rates,
             duration_months=bp.duration_months or 36,
-            default_daily_rate=bp.default_daily_rate or 250.0
+            default_daily_rate=bp.default_daily_rate or 250.0,
+            inflation_pct=bp.inflation_pct or 0.0,
         )
         team_cost = team_result["total_cost"]
         tow_breakdown = team_result["by_tow"]
@@ -2450,9 +2451,22 @@ def calculate_business_plan(
 
         if total_pct > 0:
             avg_rate = weighted_rate / total_pct
-            governance_cost = governance_fte * days_per_fte * duration_years * avg_rate
+            inflation_pct_val = bp.inflation_pct or 0.0
+            if inflation_pct_val > 0:
+                # Year-by-year escalation for team_mix governance
+                inflated_gov_cost = 0.0
+                total_years = -(-duration_months // 12)  # ceiling division without math.ceil
+                for yr in range(total_years):
+                    yr_start = yr * 12 + 1
+                    yr_end = min((yr + 1) * 12, duration_months)
+                    yr_fraction = (yr_end - yr_start + 1) / 12
+                    yr_inflation = (1 + inflation_pct_val / 100) ** yr
+                    inflated_gov_cost += governance_fte * days_per_fte * yr_fraction * avg_rate * yr_inflation
+                governance_cost = inflated_gov_cost
+            else:
+                governance_cost = governance_fte * days_per_fte * duration_years * avg_rate
     else:
-        # Fallback: percentage of team cost
+        # Fallback: percentage of team cost (team_cost already has inflation applied)
         governance_cost = team_cost * (bp.governance_pct or 0.04)
 
     # Apply reuse factor to governance if enabled
@@ -2534,7 +2548,8 @@ def get_business_plan_scenarios(lot_key: str, db: Session = Depends(get_db)):
             profile_mappings=bp.profile_mappings or {},
             profile_rates=profile_rates,
             duration_months=bp.duration_months or 36,
-            default_daily_rate=bp.default_daily_rate or 250.0
+            default_daily_rate=bp.default_daily_rate or 250.0,
+            inflation_pct=bp.inflation_pct or 0.0,
         )
         team_cost = team_result["total_cost"]
 
@@ -2595,7 +2610,8 @@ def find_discount_for_target(
             profile_mappings=bp.profile_mappings or {},
             profile_rates=profile_rates,
             duration_months=bp.duration_months or 36,
-            default_daily_rate=bp.default_daily_rate or 250.0
+            default_daily_rate=bp.default_daily_rate or 250.0,
+            inflation_pct=bp.inflation_pct or 0.0,
         )
         team_cost = team_result["total_cost"]
 

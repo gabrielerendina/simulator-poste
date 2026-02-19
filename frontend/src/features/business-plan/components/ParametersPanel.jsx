@@ -16,6 +16,7 @@ import {
   Shield,
   Zap,
   DollarSign,
+  TrendingUp,
 } from 'lucide-react';
 
 /**
@@ -51,6 +52,7 @@ export default function ParametersPanel({
     governance_mode: 'percentage',
     governance_fte_periods: [],
     governance_apply_reuse: false,
+    inflation_pct: 0,
   };
 
   const current = { ...defaults, ...values };
@@ -956,6 +958,64 @@ export default function ParametersPanel({
               {current.reuse_factor}%) = Base ×{' '}
               {(1 - current.reuse_factor / 100).toFixed(2)}
             </div>
+          </div>
+        </div>
+
+        {/* ═══ INFLAZIONE YoY SECTION ═══ */}
+        <div className="p-4">
+          <div className="p-3 bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl border border-violet-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-violet-500 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <div className="font-semibold text-violet-900">
+                    Inflazione YoY
+                  </div>
+                  <div className="text-xs text-violet-600">
+                    Escalation tariffe anno su anno
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={20}
+                  step={0.1}
+                  value={current.inflation_pct}
+                  onChange={(e) =>
+                    handleChange('inflation_pct', e.target.value)
+                  }
+                  disabled={disabled}
+                  className="w-16 px-2 py-1.5 text-center text-sm font-semibold border border-violet-200 rounded-lg
+                             focus:outline-none focus:ring-2 focus:ring-violet-500
+                             disabled:bg-slate-100 disabled:cursor-not-allowed"
+                />
+                <span className="text-sm text-violet-600 font-medium">%</span>
+              </div>
+            </div>
+
+            {current.inflation_pct > 0 && (
+              <div className="text-xs text-violet-700 bg-violet-100/50 p-2 rounded-lg space-y-1">
+                <div>
+                  <strong>Formula:</strong> Tariffa Anno N × (1 +{' '}
+                  {current.inflation_pct}%)^N
+                </div>
+                <div className="text-violet-500">
+                  Anno 1: ×1.00 · Anno 2: ×
+                  {(1 + current.inflation_pct / 100).toFixed(3)} · Anno 3: ×
+                  {Math.pow(1 + current.inflation_pct / 100, 2).toFixed(3)}
+                  {durationMonths > 36
+                    ? ` · Anno 4: ×${Math.pow(1 + current.inflation_pct / 100, 3).toFixed(3)}`
+                    : ''}
+                  {durationMonths > 48
+                    ? ` · Anno 5: ×${Math.pow(1 + current.inflation_pct / 100, 4).toFixed(3)}`
+                    : ''}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
