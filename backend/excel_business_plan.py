@@ -460,9 +460,11 @@ class BusinessPlanExcelGenerator:
         for i in range(num_tows):
             col_letter = get_column_letter(5 + i)
             ws.column_dimensions[col_letter].width = 13
-        # FTE Eff and GG Totali after TOW columns
-        fte_eff_col = 5 + num_tows  # FTE Effettivo
-        gg_tot_col = 6 + num_tows   # GG Totali
+        # Fattore Riduzione (profile_factor) as input column, then FTE Eff, GG Totali
+        factor_col = 5 + num_tows       # Fattore Rid. (editable)
+        fte_eff_col = 6 + num_tows      # FTE Effettivo
+        gg_tot_col = 7 + num_tows       # GG Totali
+        ws.column_dimensions[get_column_letter(factor_col)].width = 13
         ws.column_dimensions[get_column_letter(fte_eff_col)].width = 14
         ws.column_dimensions[get_column_letter(gg_tot_col)].width = 14
 
@@ -479,7 +481,7 @@ class BusinessPlanExcelGenerator:
         headers = ['Profilo', 'Seniority', 'FTE Base', 'GG/Anno']
         for tow in tows:
             headers.append(f"{tow.get('tow_id', tow.get('id', ''))} %")
-        headers.extend(['FTE Eff.', 'GG Totali'])
+        headers.extend(['Fattore Rid.', 'FTE Eff.', 'GG Totali'])
         self._add_header_row(ws, row, headers)
         row += 1
         data_start = row
@@ -536,13 +538,18 @@ class BusinessPlanExcelGenerator:
                 self._style_input_cell(cell_alloc)
                 cell_alloc.alignment = CENTER
 
-            # FTE Effettivo: FORMULA = FTE Base × Fattore Profilo × (1-Reuse) × Fattore TOW pesato
-            # Fattore TOW pesato = Σ (Alloc% × FattoreTOW) / Σ Alloc% (calcolato manualmente in formula)
-            # Per semplicità in Excel, applichiamo solo Fattore Profilo e Reuse (i TOW factors sono in RETTIFICA)
+            # Fattore Riduzione (profile_factor): editable input cell
             profile_factor = by_profile.get(profile_id, 1.0)
+            factor_letter = get_column_letter(factor_col)
+            cell_factor = ws.cell(row=row, column=factor_col, value=profile_factor)
+            cell_factor.number_format = '0.000'
+            self._style_input_cell(cell_factor)
+            cell_factor.alignment = CENTER
+
+            # FTE Effettivo: FORMULA referencing the editable factor cell
+            # Formula: FTE Base × Fattore Rid. × (1 - Reuse)
             cell_fte_eff = ws.cell(row=row, column=fte_eff_col)
-            # Formula: FTE × ProfileFactor × (1 - Reuse)
-            cell_fte_eff.value = f"=C{row}*{profile_factor}*(1-{self.named_ranges['REUSE_FACTOR']})"
+            cell_fte_eff.value = f"=C{row}*{factor_letter}{row}*(1-{self.named_ranges['REUSE_FACTOR']})"
             cell_fte_eff.number_format = '0.00'
             self._style_formula_cell(cell_fte_eff)
             cell_fte_eff.alignment = CENTER
@@ -783,6 +790,20 @@ class BusinessPlanExcelGenerator:
         team = self.bp.get('team_composition', []) or self.bp.get('team', [])
         mappings = self.bp.get('profile_mapping', []) or self.bp.get('profile_mappings', {})
 
+        # F2.1: Pre-compute actual GG per (member, lutech_profile) from self.intervals
+        # This gives accurate per-interval GG instead of the simplified TEAM_GG × fte_share
+        member_lutech_gg: Dict[tuple, float] = {}
+        member_gg_total: Dict[str, float] = {}
+        for interval in self.intervals:
+            m_label = interval.get('member', '')
+            lid = interval.get('lutech_profile', '')
+            rate = interval.get('rate', 0)
+            cost = interval.get('cost', 0)
+            days = (cost / rate) if rate > 0 else 0
+            key = (m_label, lid)
+            member_lutech_gg[key] = member_lutech_gg.get(key, 0.0) + days
+            member_gg_total[m_label] = member_gg_total.get(m_label, 0.0) + days
+
         # === VALIDATION 1: Profilo Poste dropdown (from team labels) ===
         poste_labels = [m.get('label', m.get('profile_id', '')) for m in team]
         poste_validation = None
@@ -880,15 +901,18 @@ class BusinessPlanExcelGenerator:
                 cell_rate.number_format = '#,##0'
                 self._style_link_cell(cell_rate)
 
-                # GG: proportional to FTE
-                member_fte = float(member.get('fte', 0))
-                total_fte = sum(float(m2.get('fte', 0)) for m2 in team)
-                fte_share = member_fte / total_fte if total_fte > 0 else 0
-
+                # GG: use actual interval data when available, else proportional to FTE
+                actual_gg = member_gg_total.get(profile_label)
                 cell_gg = ws.cell(row=row, column=5)
-                cell_gg.value = f"={self.named_ranges.get('TEAM_GG', '0')}*{fte_share:.4f}"
+                if actual_gg is not None:
+                    cell_gg.value = round(actual_gg, 1)
+                    self._style_formula_cell(cell_gg)
+                else:
+                    member_fte = float(member.get('fte', 0))
+                    total_fte = sum(float(m2.get('fte', 0)) for m2 in team)
+                    fte_share = member_fte / total_fte if total_fte > 0 else 0
+                    cell_gg.value = f"={self.named_ranges.get('TEAM_GG', '0')}*{fte_share:.4f}"
                 cell_gg.number_format = '#,##0'
-                self._style_formula_cell(cell_gg)
 
                 # Costo = GG × Mix × Tariffa
                 cell_cost = ws.cell(row=row, column=6)
@@ -926,13 +950,21 @@ class BusinessPlanExcelGenerator:
                         cell_rate.number_format = '#,##0'
                         self._style_link_cell(cell_rate)
 
-                        # GG: proportional to FTE
-                        member_fte = float(member.get('fte', 0))
-                        total_fte = sum(float(m2.get('fte', 0)) for m2 in team)
-                        fte_share = member_fte / total_fte if total_fte > 0 else 0
-
+                        # GG: use actual interval data (per lutech profile) when available
+                        lutech_gg = member_lutech_gg.get((profile_label, lutech_profile))
+                        if lutech_gg is None:
+                            # Fallback: use member total × mix pct, or formula
+                            member_total = member_gg_total.get(profile_label)
+                            if member_total is not None:
+                                lutech_gg = member_total * pct
                         cell_gg = ws.cell(row=row, column=5)
-                        cell_gg.value = f"={self.named_ranges.get('TEAM_GG', '0')}*{fte_share:.4f}"
+                        if lutech_gg is not None:
+                            cell_gg.value = round(lutech_gg, 1)
+                        else:
+                            member_fte = float(member.get('fte', 0))
+                            total_fte = sum(float(m2.get('fte', 0)) for m2 in team)
+                            fte_share = member_fte / total_fte if total_fte > 0 else 0
+                            cell_gg.value = f"={self.named_ranges.get('TEAM_GG', '0')}*{fte_share:.4f}*{pct:.4f}"
                         cell_gg.number_format = '#,##0'
                         self._style_formula_cell(cell_gg)
 
@@ -1170,11 +1202,18 @@ class BusinessPlanExcelGenerator:
             cell_rev.number_format = '#,##0'
             self._style_formula_cell(cell_rev)
 
-            # Costo (will be linked to Section 2)
+            # F2.3: Costo from actual tow_breakdown data (not TEAM_COST × weight_pct approximation)
             cell_cost = ws.cell(row=row, column=5)
-            cell_cost.value = f"={self.named_ranges.get('TEAM_COST', '0')}*C{row}"
+            tow_breakdown_entry = self.tow_breakdown.get(tow_id, None)
+            if tow_breakdown_entry is not None:
+                actual_cost = tow_breakdown_entry.get('cost', 0) if isinstance(tow_breakdown_entry, dict) else tow_breakdown_entry
+                cell_cost.value = round(actual_cost, 2)
+                self._style_formula_cell(cell_cost)
+            else:
+                # Fallback: proportional estimate from total team cost
+                cell_cost.value = f"={self.named_ranges.get('TEAM_COST', '0')}*C{row}"
+                self._style_formula_cell(cell_cost)
             cell_cost.number_format = '#,##0'
-            self._style_formula_cell(cell_cost)
 
             # Margine
             cell_margin = ws.cell(row=row, column=6)
