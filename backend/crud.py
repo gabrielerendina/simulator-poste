@@ -210,7 +210,20 @@ def update_lot_config(
         
         # Handle RTI quotas
         if lot_config.rti_quotas:
-            db_lot.rti_quotas = lot_config.rti_quotas
+            # Validate that quotas sum to 100
+            quota_sum = sum(lot_config.rti_quotas.values())
+            if abs(quota_sum - 100.0) > 0.01:
+                logger.warning(f"RTI quotas sum to {quota_sum}, adjusting to 100")
+                # Adjust the largest quota to make sum exactly 100
+                if lot_config.rti_quotas:
+                    max_company = max(lot_config.rti_quotas.keys(), key=lambda k: lot_config.rti_quotas[k])
+                    adjusted_quotas = dict(lot_config.rti_quotas)
+                    adjusted_quotas[max_company] += (100.0 - quota_sum)
+                    db_lot.rti_quotas = adjusted_quotas
+                else:
+                    db_lot.rti_quotas = lot_config.rti_quotas
+            else:
+                db_lot.rti_quotas = lot_config.rti_quotas
         else:
             # Initialize default quotas if RTI is enabled but no quotas provided
             if lot_config.rti_enabled and db_lot.rti_companies:
@@ -221,6 +234,11 @@ def update_lot_config(
                 db_lot.rti_quotas = {"Lutech": 70.0}
                 for company in db_lot.rti_companies:
                     db_lot.rti_quotas[company] = per_partner
+                # Ensure sum is exactly 100 by adjusting last partner
+                total = sum(db_lot.rti_quotas.values())
+                if abs(total - 100.0) > 0.001 and db_lot.rti_companies:
+                    last_company = db_lot.rti_companies[-1]
+                    db_lot.rti_quotas[last_company] += (100.0 - total)
             else:
                 db_lot.rti_quotas = {}
         

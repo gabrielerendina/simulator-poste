@@ -3,6 +3,7 @@ import { bpSaveTrigger } from './utils/bpSaveTrigger';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import Sidebar from './components/Sidebar';
+import ErrorBoundary from './components/ErrorBoundary';
 import TechEvaluator from './components/TechEvaluator';
 import Dashboard from './components/Dashboard';
 import ConfigPage from './components/ConfigPage';
@@ -435,16 +436,18 @@ function AppContent() {
 // Main App wrapper with authentication and context providers
 export default function App() {
   return (
-    <AuthProvider>
-      <ProtectedRoute>
-        <ToastProvider>
-          <ConfigProvider>
-            <SimulationProvider>
-              <AppContent />
-            </SimulationProvider>
-          </ConfigProvider>
-        </ToastProvider>
-      </ProtectedRoute>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ProtectedRoute>
+          <ToastProvider>
+            <ConfigProvider>
+              <SimulationProvider>
+                <AppContent />
+              </SimulationProvider>
+            </ConfigProvider>
+          </ToastProvider>
+        </ProtectedRoute>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

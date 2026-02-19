@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
 
 const ToastContext = createContext(null);
@@ -14,6 +14,16 @@ export const useToast = () => {
 
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
+  // Track timeouts for cleanup
+  const timeoutsRef = useRef(new Map());
+
+  // Cleanup all timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+      timeoutsRef.current.clear();
+    };
+  }, []);
 
   const showToast = useCallback(({ type = 'info', message, duration = 5000 }) => {
     const id = Date.now();
@@ -22,15 +32,23 @@ export const ToastProvider = ({ children }) => {
     setToasts(prev => [...prev, toast]);
 
     if (duration > 0) {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         setToasts(prev => prev.filter(t => t.id !== id));
+        timeoutsRef.current.delete(id);
       }, duration);
+      timeoutsRef.current.set(id, timeoutId);
     }
 
     return id;
   }, []);
 
   const hideToast = useCallback((id) => {
+    // Clear the timeout when manually dismissing
+    const timeoutId = timeoutsRef.current.get(id);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutsRef.current.delete(id);
+    }
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 

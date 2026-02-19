@@ -122,6 +122,11 @@ export default function BusinessPlanPage() {
         governance_mode: businessPlan.governance_mode || 'percentage',
         governance_fte_periods: businessPlan.governance_fte_periods || [],
         governance_apply_reuse: businessPlan.governance_apply_reuse || false,
+        governance_profile_mix: businessPlan.governance_profile_mix || [],
+        governance_cost_manual: businessPlan.governance_cost_manual ?? null,
+        margin_warning_threshold: businessPlan.margin_warning_threshold ?? 0.05,
+        margin_success_threshold: businessPlan.margin_success_threshold ?? 0.15,
+        inflation_pct: businessPlan.inflation_pct ?? 0,
       });
     } else if (selectedLot) {
       // Initialize empty BP (values already in percentage form)
@@ -150,6 +155,8 @@ export default function BusinessPlanPage() {
         governance_fte_periods: [],
         governance_apply_reuse: false,
         inflation_pct: 0,
+        margin_warning_threshold: 0.05,
+        margin_success_threshold: 0.15,
       });
     }
   }, [businessPlan, selectedLot]);
@@ -774,6 +781,10 @@ export default function BusinessPlanPage() {
         reuse_factor: localBP.reuse_factor / 100,
         days_per_fte: localBP.days_per_fte,
         default_daily_rate: localBP.default_daily_rate,
+        // Ensure these fields are explicitly included
+        margin_warning_threshold: localBP.margin_warning_threshold ?? 0.05,
+        margin_success_threshold: localBP.margin_success_threshold ?? 0.15,
+        inflation_pct: localBP.inflation_pct ?? 0,
       };
 
       await saveBusinessPlan(dataToSave);

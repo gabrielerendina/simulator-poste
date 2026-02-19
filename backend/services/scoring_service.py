@@ -1,8 +1,11 @@
 """
 Scoring Service - Business logic for technical and economic scoring
 """
+import logging
 from typing import Dict, List
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class ScoringService:
@@ -44,6 +47,11 @@ class ScoringService:
             # Edge case: if no discount spread exists
             # If both prices equal base price, no discount → score = 0
             # If best price > base price (invalid), return 0
+            logger.warning(
+                f"Economic score calculation: zero/negative denominator. "
+                f"p_base={p_base}, p_offered={p_offered}, p_best_competitor={p_best_competitor}, "
+                f"actual_best={actual_best}, denom={denom}"
+            )
             return 0.0
 
         # Calculate numerator (our discount)

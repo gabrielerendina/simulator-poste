@@ -80,7 +80,27 @@ def run_migrations():
                 logger.info("Migrating: Adding is_active column to lot_configs table")
                 conn.execute(text("ALTER TABLE lot_configs ADD COLUMN is_active INTEGER DEFAULT 1"))
             conn.commit()
-    
+
+    # Migration for business_plans table - add governance and inflation columns
+    if "business_plans" in inspector.get_table_names():
+        columns = [col["name"] for col in inspector.get_columns("business_plans")]
+        with engine.connect() as conn:
+            bp_migrations = [
+                ("governance_mode", "TEXT DEFAULT 'percentage'"),
+                ("governance_fte_periods", "TEXT DEFAULT '[]'"),
+                ("governance_apply_reuse", "INTEGER DEFAULT 0"),
+                ("inflation_pct", "REAL DEFAULT 0.0"),
+                ("governance_profile_mix", "TEXT DEFAULT '[]'"),
+                ("governance_cost_manual", "REAL"),
+                ("margin_warning_threshold", "REAL DEFAULT 0.05"),
+                ("margin_success_threshold", "REAL DEFAULT 0.15"),
+            ]
+            for col_name, col_def in bp_migrations:
+                if col_name not in columns:
+                    logger.info(f"Migrating: Adding {col_name} column to business_plans table")
+                    conn.execute(text(f"ALTER TABLE business_plans ADD COLUMN {col_name} {col_def}"))
+            conn.commit()
+
     logger.info("Database migrations completed")
 
 
@@ -183,7 +203,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
     max_age=600,  # Cache preflight for 10 minutes
 )
@@ -301,7 +321,7 @@ def health_check(db: Session = Depends(get_db)):
         health_status["status"] = "unhealthy"
         health_status["checks"]["database"] = {
             "status": "unhealthy",
-            "message": f"Database error: {str(e)}"
+            "message": "Database connection failed"
         }
         logger.error("Health check failed: database", exc_info=True)
 
@@ -314,9 +334,10 @@ def health_check(db: Session = Depends(get_db)):
             "message": "OK" if lot_count > 0 else "No lot configurations found"
         }
     except Exception as e:
+        logger.warning(f"Health check lot_configs error: {e}")
         health_status["checks"]["lot_configs"] = {
             "status": "warning",
-            "message": str(e)
+            "message": "Unable to check lot configurations"
         }
 
     # Check master data
@@ -706,7 +727,7 @@ def download_config_template(db: Session = Depends(get_db)):
         )
     except Exception as e:
         logger.error(f"Error generating config template: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Errore nella generazione del template")
 
 
 @api_router.get("/lots/{lot_key}/export")
@@ -773,7 +794,7 @@ def export_lot_config(lot_key: str, db: Session = Depends(get_db)):
         )
     except Exception as e:
         logger.error(f"Error exporting lot config: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Errore nell'esportazione della configurazione")
 
 
 @api_router.post("/config/import")
@@ -895,7 +916,7 @@ async def import_config_from_excel(
         raise
     except Exception as e:
         logger.error(f"Error importing config from Excel: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Errore nell'importazione della configurazione")
 
 
 @api_router.post("/config/{lot_key}/req/{req_id}/criteria")
@@ -2365,7 +2386,7 @@ def create_or_update_business_plan(
         raise
     except Exception as e:
         logger.error(f"Error saving business plan for lot '{lot_key}': {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Errore nel salvataggio del Business Plan: {str(e)}")
+        raise HTTPException(status_code=500, detail="Errore nel salvataggio del Business Plan")
 
 
 @bp_router.delete("/{lot_key}")
@@ -2669,10 +2690,8 @@ def export_business_plan_excel(data: schemas.ExportBusinessPlanRequest, db: Sess
             lutech_breakdown=data.lutech_breakdown,
         )
     except Exception as e:
-        logger.error(f"Error generating Business Plan Excel: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error generating Excel: {str(e)}")
+        logger.error(f"Error generating Business Plan Excel: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Errore nella generazione dell'Excel")
 
     logger.info(f"Business Plan Excel export completed for lot: {data.lot_key}")
 

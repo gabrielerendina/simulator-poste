@@ -15,6 +15,9 @@ export default function Sidebar({
     // Track lots where we've already saved default quotas
     const savedDefaultQuotasRef = useRef(new Set());
 
+    // Ref for quota save timeout (avoids global window property)
+    const quotaSaveTimeoutRef = useRef(null);
+
     // Get data from contexts (no more prop drilling!)
     const { config, updateConfig, setConfig } = useConfig();
     const {
@@ -113,12 +116,23 @@ export default function Sidebar({
         const newQuotas = { ...localQuotas, [company]: numValue };
         setLocalQuotas(newQuotas);
         
-        // Debounce the save
-        clearTimeout(window.quotaSaveTimeout);
-        window.quotaSaveTimeout = setTimeout(() => {
+        // Debounce the save using ref instead of global
+        if (quotaSaveTimeoutRef.current) {
+            clearTimeout(quotaSaveTimeoutRef.current);
+        }
+        quotaSaveTimeoutRef.current = setTimeout(() => {
             saveQuotas(newQuotas);
         }, 1000);
     };
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (quotaSaveTimeoutRef.current) {
+                clearTimeout(quotaSaveTimeoutRef.current);
+            }
+        };
+    }, []);
 
     // Get all RTI companies including Lutech
     const allRtiCompanies = isRti ? ['Lutech', ...rtiCompanies] : [];
