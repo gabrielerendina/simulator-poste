@@ -9,6 +9,7 @@ import ConfigPage from './components/ConfigPage';
 import MasterDataConfig from './components/MasterDataConfig';
 import CertVerificationPage from './components/CertVerificationPage';
 import BusinessPlanPage from './features/business-plan/pages/BusinessPlanPage';
+import PilotaDashboard from './components/PilotaDashboard';
 import { BusinessPlanProvider } from './features/business-plan/context/BusinessPlanContext';
 import { Settings, Menu, Save } from 'lucide-react';
 import { logger } from './utils/logger';
@@ -367,6 +368,14 @@ function AppContent() {
                 <span className="hidden md:inline">{t('common.master_data')}</span>
               </button>
               <button
+                onClick={() => setView('pilota')}
+                className={`hidden sm:flex items-center gap-2 px-2 md:px-4 py-2 rounded-xl transition-all font-medium text-sm ${view === 'pilota' ? 'bg-purple-50 text-purple-700 ring-1 ring-purple-200 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+                aria-label="Pilota UX"
+              >
+                <span className="text-xs">✦</span>
+                <span className="hidden md:inline">Pilota</span>
+              </button>
+              <button
                 onClick={handleUnifiedSave}
                 className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl transition-all font-medium text-sm bg-green-500 text-white hover:bg-green-600 shadow-sm"
                 aria-label={t('common.save')}
@@ -412,6 +421,8 @@ function AppContent() {
               }
             }}
           />
+        ) : view === 'pilota' ? (
+          <PilotaDashboard />
         ) : view === 'master' ? (
           <MasterDataConfig />
         ) : view === 'certs' ? (
