@@ -156,13 +156,13 @@ export default function VolumeAdjustments({
         saved: numTasks - effectiveTasks,
         label: 'task'
       };
-    } else if (tow.type === 'corpo') {
+    } else if (tow.type === 'corpo' || tow.type === 'canone') {
       const months = tow.duration_months || 0;
       const effectiveMonths = +(months * factor).toFixed(1);
       const effectiveDays = Math.round(effectiveMonths / 12 * DAYS_PER_FTE);
       const originalDays = Math.round(months / 12 * DAYS_PER_FTE);
       return {
-        type: 'corpo',
+        type: tow.type,
         original: months,
         effective: effectiveMonths,
         saved: +(months - effectiveMonths).toFixed(1),
@@ -414,7 +414,7 @@ export default function VolumeAdjustments({
                           </p>
                         ) : (
                           <>
-                            {tows.filter(tow => tow.type === 'task' || tow.type === 'corpo').map(tow => {
+                            {tows.filter(tow => tow.type === 'task' || tow.type === 'corpo' || tow.type === 'canone').map(tow => {
                               const factor = period.by_tow?.[tow.tow_id] ?? 1.0;
                               const effect = getTowEffect(tow, factor);
 
@@ -422,13 +422,13 @@ export default function VolumeAdjustments({
                               if (effect && factor < 1.0) {
                                 if (effect.type === 'task') {
                                   effectInfo = `${effect.original} → ${effect.effective} task (−${effect.saved})`;
-                                } else if (effect.type === 'corpo') {
+                                } else if (effect.type === 'corpo' || effect.type === 'canone') {
                                   effectInfo = `${effect.original} → ${effect.effective} mesi (−${effect.savedDays} gg)`;
                                 }
                               } else if (effect) {
                                 if (effect.type === 'task') {
                                   effectInfo = `${effect.original} task`;
-                                } else if (effect.type === 'corpo') {
+                                } else if (effect.type === 'corpo' || effect.type === 'canone') {
                                   effectInfo = `${effect.original} mesi (${effect.originalDays} gg)`;
                                 }
                               }
@@ -440,14 +440,18 @@ export default function VolumeAdjustments({
                                       <span className="flex items-center gap-1.5">
                                         {tow.type === 'task' ? (
                                           <Hash className="w-3 h-3 text-blue-500" />
+                                        ) : tow.type === 'canone' ? (
+                                          <Clock className="w-3 h-3 text-green-500" />
                                         ) : (
                                           <Clock className="w-3 h-3 text-purple-500" />
                                         )}
                                         <span>{tow.tow_id} - {tow.label}</span>
                                         <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                          tow.type === 'task' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                                          tow.type === 'task' ? 'bg-blue-100 text-blue-700' :
+                                          tow.type === 'canone' ? 'bg-green-100 text-green-700' :
+                                          'bg-purple-100 text-purple-700'
                                         }`}>
-                                          {tow.type === 'task' ? 'A Task' : 'A Corpo'}
+                                          {tow.type === 'task' ? 'A Task' : tow.type === 'canone' ? 'Canone' : 'A Corpo'}
                                         </span>
                                       </span>
                                     }
@@ -471,7 +475,7 @@ export default function VolumeAdjustments({
                               </div>
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3 text-purple-500" />
-                                <strong>A Corpo:</strong> riduce i mesi di lavoro → meno giorni → meno FTE (220 gg/anno)
+                                <strong>A Corpo / Canone:</strong> riduce i mesi di lavoro → meno giorni → meno FTE (220 gg/anno)
                               </div>
                             </div>
                           </>

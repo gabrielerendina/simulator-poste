@@ -76,12 +76,16 @@ export default function OfferSchemeTable({
                                             <span className={`px-2 py-1 rounded text-xs font-medium
                         ${row.type === 'task' ? 'bg-blue-100 text-blue-700' :
                                                     row.type === 'corpo' ? 'bg-purple-100 text-purple-700' :
+                                                    row.type === 'canone' ? 'bg-green-100 text-green-700' :
                                                         'bg-amber-100 text-amber-700'}`}>
-                                                {row.type === 'task' ? 'Task' : row.type === 'corpo' ? 'A Corpo' : 'Consumo'}
+                                                {row.type === 'task' ? 'Task' : row.type === 'corpo' ? 'A Corpo' : row.type === 'canone' ? 'Canone' : 'Consumo'}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-center font-mono text-slate-700">
-                                            {formatNumber(row.quantity)}
+                                            <span>{formatNumber(row.quantity)}</span>
+                                            <span className="block text-[10px] text-slate-400 font-sans">
+                                              {row.type === 'task' ? 'task' : row.type === 'corpo' ? 'mesi (forfait)' : row.type === 'canone' ? 'mesi (canone)' : 'forfait'}
+                                            </span>
                                         </td>
                                         <td className="px-4 py-3 text-right font-mono text-slate-700">
                                             {formatCurrency(row.unit_price)}

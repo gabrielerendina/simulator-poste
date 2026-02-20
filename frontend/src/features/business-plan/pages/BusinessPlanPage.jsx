@@ -1176,7 +1176,7 @@ export default function BusinessPlanPage() {
       let quantity = 0;
       if (tow.type === 'task') {
         quantity = parseInt(tow.num_tasks) || 0;
-      } else if (tow.type === 'corpo') {
+      } else if (tow.type === 'corpo' || tow.type === 'canone') {
         quantity = parseInt(tow.duration_months) || parseInt(localBP.duration_months) || 36;
       } else {
         quantity = 1; // Consumo default

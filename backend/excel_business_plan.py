@@ -405,11 +405,11 @@ class BusinessPlanExcelGenerator:
         # Create dropdown for type
         type_validation = DataValidation(
             type="list",
-            formula1='"task,corpo,consumo"',
+            formula1='"task,corpo,consumo,canone"',
             allow_blank=False,
             showDropDown=False
         )
-        type_validation.error = "Seleziona task, corpo o consumo"
+        type_validation.error = "Seleziona task, corpo, consumo o canone"
         type_validation.errorTitle = "Tipo non valido"
         type_validation.prompt = "Scegli il tipo di TOW"
         type_validation.promptTitle = "Tipo TOW"
@@ -737,6 +737,10 @@ class BusinessPlanExcelGenerator:
                     dur = tow.get('duration_months', duration_months)
                     eff_dur = dur * factor
                     ws.cell(row=row, column=4, value=f"{dur} → {eff_dur:.1f} mesi")
+                elif tow_type == 'canone':
+                    dur = tow.get('duration_months', duration_months)
+                    eff_dur = dur * factor
+                    ws.cell(row=row, column=4, value=f"{dur} → {eff_dur:.1f} mesi (canone)")
                 else:
                     ws.cell(row=row, column=4, value="N/A (consumo)")
 
@@ -1807,7 +1811,7 @@ class BusinessPlanExcelGenerator:
             # Quantity based on type
             if tow.get('type') == 'task':
                 qty = tow.get('num_tasks', 1) or 1
-            elif tow.get('type') == 'corpo':
+            elif tow.get('type') in ('corpo', 'canone'):
                 qty = self.bp.get('duration_months', 36)
             else:
                 qty = 1
