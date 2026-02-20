@@ -43,6 +43,8 @@ spec:
         authentications:
           - issuer: "https://asojzafbi.accounts.ondemand.com"
             jwksUri: "https://asojzafbi.accounts.ondemand.com/oauth2/certs"
+            audiences:
+              - "c763a5f1-287c-4115-93bc-61e06b1bd7a3"
       service:
         name: backend-service
         port: 8000
