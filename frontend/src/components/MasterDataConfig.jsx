@@ -38,12 +38,12 @@ export default function MasterDataConfig() {
     const saveMasterData = useCallback(async (newData) => {
         try {
             await axios.post(`${API_URL}/master-data`, newData);
-            showToast('success', 'Salvato');
+            showToast('success', t('master.saved'));
             // Refresh ConfigContext so other components (TechEvaluator) get updated masterData
             if (refetchConfig) refetchConfig();
         } catch (error) {
             logger.error('Error saving master data', error);
-            showToast('error', `Errore: ${error.response?.data?.detail || error.message}`);
+            showToast('error', `${t('master.error_prefix')}: ${error.response?.data?.detail || error.message}`);
         }
     }, [refetchConfig]);
 
@@ -139,7 +139,7 @@ export default function MasterDataConfig() {
             showToast('success', `${vendor.name} ${!vendor.enabled ? 'abilitato' : 'disabilitato'}`);
         } catch (error) {
             logger.error('Error toggling vendor', error);
-            showToast('error', `Errore: ${error.response?.data?.detail || error.message}`);
+            showToast('error', `${t('master.error_prefix')}: ${error.response?.data?.detail || error.message}`);
         }
     };
 
@@ -151,10 +151,10 @@ export default function MasterDataConfig() {
             setVendors(prev => prev.map(v => 
                 v.key === vendorKey ? { ...v, [field]: value } : v
             ));
-            showToast('success', 'Salvato');
+            showToast('success', t('master.saved'));
         } catch (error) {
             logger.error('Error updating vendor', error);
-            showToast('error', `Errore: ${error.response?.data?.detail || error.message}`);
+            showToast('error', `${t('master.error_prefix')}: ${error.response?.data?.detail || error.message}`);
         }
     };
 
@@ -227,7 +227,7 @@ export default function MasterDataConfig() {
             showToast('success', `Vendor "${newVendor.name}" creato`);
         } catch (error) {
             logger.error('Error creating vendor', error);
-            showToast('error', `Errore: ${error.response?.data?.detail || error.message}`);
+            showToast('error', `${t('master.error_prefix')}: ${error.response?.data?.detail || error.message}`);
         }
     };
 
@@ -252,7 +252,7 @@ export default function MasterDataConfig() {
             showToast('success', `Vendor "${vendor.name}" eliminato`);
         } catch (error) {
             logger.error('Error deleting vendor', error);
-            showToast('error', `Errore: ${error.response?.data?.detail || error.message}`);
+            showToast('error', `${t('master.error_prefix')}: ${error.response?.data?.detail || error.message}`);
         }
     };
 
@@ -271,7 +271,7 @@ export default function MasterDataConfig() {
         { id: 'prof_certs', label: t('master.prof_certs'), icon: Award, color: 'text-blue-600', bg: 'bg-blue-50' },
         { id: 'rti_partners', label: t('master.rti_partners'), icon: Building2, color: 'text-indigo-600', bg: 'bg-indigo-50' },
         { id: 'economic_formulas', label: t('config.economic_formula'), icon: Info, color: 'text-orange-600', bg: 'bg-orange-50' },
-        { id: 'ocr_settings', label: 'Impostazioni OCR', icon: Settings, color: 'text-purple-600', bg: 'bg-purple-50' },
+        { id: 'ocr_settings', label: t('master.ocr_settings'), icon: Settings, color: 'text-purple-600', bg: 'bg-purple-50' },
     ];
 
     return (
@@ -334,8 +334,7 @@ export default function MasterDataConfig() {
                             {activeSection === 'ocr_settings' ? (
                                 <div className="space-y-4">
                                     <p className="text-sm text-slate-600 mb-4">
-                                        Configura i vendor e pattern per il riconoscimento OCR delle certificazioni professionali.
-                                        Le modifiche vengono salvate automaticamente.
+                                        {t('master.ocr_settings_desc')}
                                     </p>
                                     
                                     {/* Search and Add buttons (fix #5, #18) */}
@@ -344,7 +343,7 @@ export default function MasterDataConfig() {
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                             <input
                                                 type="text"
-                                                placeholder="Cerca vendor..."
+                                                placeholder={t('master.search_vendor')}
                                                 value={vendorSearch}
                                                 onChange={(e) => setVendorSearch(e.target.value)}
                                                 className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none"
@@ -355,7 +354,7 @@ export default function MasterDataConfig() {
                                             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 text-sm font-medium"
                                         >
                                             <Plus className="w-4 h-4" />
-                                            Nuovo Vendor
+                                            {t('master.new_vendor')}
                                         </button>
                                     </div>
                                     
